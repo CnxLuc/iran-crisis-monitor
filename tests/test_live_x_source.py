@@ -1,7 +1,9 @@
 import os
+import io
 import unittest
 from datetime import datetime, timezone
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+import urllib.error
 
 from api import live
 
@@ -103,6 +105,33 @@ class LiveXSourceTests(unittest.TestCase):
         self.assertEqual(len(merged), 2)
         self.assertEqual(merged[0]["id"], "x-2")
 
+    def test_merge_and_dedupe_news_items_reserves_x_slots(self):
+        rss_items = []
+        for i in range(30):
+            rss_items.append({
+                "id": f"rss-{i}",
+                "title": f"RSS {i}",
+                "time": f"2026-02-28T16:{59-i:02d}:00Z",
+                "url": f"https://example.com/rss/{i}",
+            })
+        x_items = []
+        for i in range(6):
+            x_items.append({
+                "id": f"x-{i}",
+                "title": f"X {i}",
+                "time": f"2026-02-28T12:{59-i:02d}:00Z",
+                "url": f"https://x.com/a/status/{i}",
+                "source": "@auroraintel",
+                "type": "osint",
+                "tag": "osint",
+            })
+
+        merged = live.merge_and_dedupe_news_items(rss_items, x_items, limit=25)
+        x_count = sum(1 for item in merged if str(item.get("source", "")).startswith("@"))
+
+        self.assertEqual(len(merged), 25)
+        self.assertGreaterEqual(x_count, 5)
+
     def test_fetch_news_feeds_includes_x_items_sorted_by_recency(self):
         rss_items = [
             {
@@ -187,8 +216,13 @@ class LiveXSourceTests(unittest.TestCase):
                 {"type": "text", "text": "2, 3"},
             ]
         }
+        fake_response = MagicMock()
+        fake_response.read.return_value = live.json.dumps(llm_response).encode("utf-8")
+        fake_context = MagicMock()
+        fake_context.__enter__.return_value = fake_response
+        fake_context.__exit__.return_value = False
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}, clear=True):
-            with patch.object(live, "fetch_url", return_value=live.json.dumps(llm_response)):
+            with patch("urllib.request.urlopen", return_value=fake_context):
                 filtered = live.filter_x_items_with_llm(items)
 
         self.assertEqual([item["id"] for item in filtered], ["x-2", "x-3"])
@@ -203,11 +237,32 @@ class LiveXSourceTests(unittest.TestCase):
                 {"type": "text", "text": "NONE"},
             ]
         }
+        fake_response = MagicMock()
+        fake_response.read.return_value = live.json.dumps(llm_response).encode("utf-8")
+        fake_context = MagicMock()
+        fake_context.__enter__.return_value = fake_response
+        fake_context.__exit__.return_value = False
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}, clear=True):
-            with patch.object(live, "fetch_url", return_value=live.json.dumps(llm_response)):
+            with patch("urllib.request.urlopen", return_value=fake_context):
                 filtered = live.filter_x_items_with_llm(items)
 
         self.assertEqual(filtered, [])
+
+    def test_filter_x_items_with_llm_http_error_exposes_status(self):
+        items = [{"id": "x-1", "title": "Relevant Iran update", "source": "@auroraintel"}]
+        http_err = urllib.error.HTTPError(
+            url="https://api.anthropic.com/v1/messages",
+            code=401,
+            msg="Unauthorized",
+            hdrs=None,
+            fp=io.BytesIO(b'{"error":"invalid api key"}'),
+        )
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}, clear=True):
+            with patch("urllib.request.urlopen", side_effect=http_err):
+                _, meta = live.filter_x_items_with_llm(items, return_meta=True)
+
+        self.assertEqual(meta["result"], "http_401_passthrough")
+        self.assertEqual(meta["httpStatus"], 401)
 
 
 if __name__ == "__main__":

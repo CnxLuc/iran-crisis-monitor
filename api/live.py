@@ -1,6 +1,7 @@
 """Vercel serverless function for Iran Crisis Monitor live data with history tracking."""
 import json
 import os
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -80,6 +81,7 @@ X_MAX_AGE_HOURS = 12
 X_MIN_TEXT_LENGTH = 40
 X_MIN_ENGAGEMENT = 12
 X_MIN_SCORE = 22
+X_RESERVED_NEWS_SLOTS = 5
 ANTHROPIC_API_KEY_ENV = "ANTHROPIC_API_KEY"
 ANTHROPIC_MODEL_ENV = "ANTHROPIC_MODEL"
 ANTHROPIC_DEFAULT_MODEL = "claude-3-5-haiku-latest"
@@ -416,25 +418,42 @@ def filter_x_items_with_llm(items, return_meta=False):
     prompt = build_llm_relevance_prompt(items)
     model = os.getenv(ANTHROPIC_MODEL_ENV, ANTHROPIC_DEFAULT_MODEL).strip() or ANTHROPIC_DEFAULT_MODEL
     llm_meta["model"] = model
-    payload = {
+    payload = json.dumps({
         "model": model,
         "max_tokens": 120,
         "temperature": 0,
         "messages": [{"role": "user", "content": prompt}],
-    }
-    raw = fetch_url(
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
         ANTHROPIC_API_URL,
-        timeout=6,
+        data=payload,
         headers={
             "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
             "Content-Type": "application/json",
             "Accept": "application/json",
         },
-        data=json.dumps(payload).encode("utf-8"),
     )
-    if not raw:
+    try:
+        with urllib.request.urlopen(req, timeout=6) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as err:
+        llm_meta["result"] = f"http_{err.code}_passthrough"
+        llm_meta["httpStatus"] = int(err.code)
+        try:
+            err_body = err.read().decode("utf-8", errors="replace")
+            llm_meta["errorDetail"] = err_body[:180]
+        except Exception:
+            llm_meta["errorDetail"] = err.reason if hasattr(err, "reason") else "http_error"
+        return (items, llm_meta) if return_meta else items
+    except urllib.error.URLError as err:
+        llm_meta["result"] = "network_error_passthrough"
+        llm_meta["errorDetail"] = str(getattr(err, "reason", err))[:180]
+        return (items, llm_meta) if return_meta else items
+    except Exception as err:
         llm_meta["result"] = "request_failed_passthrough"
+        llm_meta["errorDetail"] = str(err)[:180]
         return (items, llm_meta) if return_meta else items
 
     try:
@@ -564,7 +583,29 @@ def merge_and_dedupe_news_items(rss_items, x_items, limit=25):
         unique.append(item)
 
     unique.sort(key=lambda item: item.get("time", "1970-01-01T00:00:00Z"), reverse=True)
-    return unique[:limit]
+    if limit <= 0:
+        return []
+
+    x_unique = [
+        item for item in unique
+        if str(item.get("source", "")).startswith("@") or str(item.get("url", "")).startswith("https://x.com/")
+    ]
+    non_x_unique = [item for item in unique if item not in x_unique]
+
+    reserved_x = min(X_RESERVED_NEWS_SLOTS, len(x_unique), limit)
+    selected = non_x_unique[:max(0, limit - reserved_x)] + x_unique[:reserved_x]
+    selected_ids = {id(item) for item in selected}
+    if len(selected) < limit:
+        for item in unique:
+            if id(item) in selected_ids:
+                continue
+            selected.append(item)
+            selected_ids.add(id(item))
+            if len(selected) >= limit:
+                break
+
+    selected.sort(key=lambda item: item.get("time", "1970-01-01T00:00:00Z"), reverse=True)
+    return selected[:limit]
 
 
 def fetch_news_feeds(return_debug=False):
