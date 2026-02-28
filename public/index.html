@@ -238,21 +238,71 @@ button { cursor: pointer; font-family: inherit; }
   color: rgba(255,255,255,0.4);
   letter-spacing: 0.06em;
 }
-.theme-toggle {
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: var(--r-md);
-  padding: var(--sp-2) var(--sp-3);
-  color: rgba(255,255,255,0.8);
-  font-size: 0.75rem;
-  font-family: var(--font-mono);
-  letter-spacing: 0.06em;
+/* Creator profile chip in header */
+.creator-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
   transition: all 0.18s var(--ease-out);
   white-space: nowrap;
 }
-.theme-toggle:hover {
-  background: rgba(255,255,255,0.2);
-  color: #fff;
+.creator-chip:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.25);
+}
+.creator-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid rgba(255,255,255,0.2);
+}
+.creator-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.45);
+  line-height: 1;
+}
+.creator-handle {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.85);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+/* Floating mini dark mode toggle — bottom right */
+.theme-toggle-float {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 200;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s var(--ease-out);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  padding: 0;
+  line-height: 1;
+}
+.theme-toggle-float:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
 }
 
 /* ============================================================
@@ -2255,7 +2305,13 @@ button { cursor: pointer; font-family: inherit; }
   </div>
   <div class="header-right">
     <div class="header-timestamp" id="headerTimestamp">Loading...</div>
-    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">◐ Dark Mode</button>
+    <a class="creator-chip" href="https://x.com/deLeyritzluc" target="_blank" rel="noopener">
+      <img class="creator-avatar" src="https://unavatar.io/x/deLeyritzluc" alt="@deLeyritzluc" />
+      <div>
+        <div class="creator-label">Built by</div>
+        <div class="creator-handle">@deLeyritzluc</div>
+      </div>
+    </a>
   </div>
 </header>
 
@@ -3657,7 +3713,7 @@ function toggleTheme() {
   state.theme = state.theme === 'light' ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', state.theme);
   const btn = document.getElementById('themeToggle');
-  btn.textContent = state.theme === 'dark' ? '☀ Light Mode' : '◐ Dark Mode';
+  btn.textContent = state.theme === 'dark' ? '☀' : '◐';
   if (state.trendCharts && state.trendCharts.length) {
     updateChartColors();
   }
@@ -4436,6 +4492,8 @@ function escHtml(str) {
   return div.innerHTML;
 }
 </script>
+
+<button class="theme-toggle-float" id="themeToggle" onclick="toggleTheme()" title="Toggle theme">◐</button>
 
 </body>
 </html>
