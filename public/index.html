@@ -1,1 +1,4198 @@
-<!-- This is a placeholder. To sync the real index.html from the live deployment, run the 'Sync HTML from Vercel' GitHub Action from the Actions tab. --><!DOCTYPE html><html><head><title>Iran Crisis Monitor</title></head><body><h1>Run the GitHub Action to sync the frontend</h1><p>Go to <a href='https://github.com/CnxLuc/iran-crisis-monitor/actions'>Actions</a> and run 'Sync HTML from Vercel'.</p><p>Or visit the live site: <a href='https://iran-crisis-monitor.vercel.app/'>iran-crisis-monitor.vercel.app</a></p></body></html>
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iran Crisis Monitor — Real-Time Intelligence Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  /* Type */
+  --font-display: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing (4px grid) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px;
+
+  /* Radius */
+  --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px;
+
+  /* Easing */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================
+   LIGHT MODE (DEFAULT)
+   ============================================================ */
+[data-theme="light"] {
+  --bg-base:    #f8f7f5;
+  --bg-surface: #ffffff;
+  --bg-raised:  #f2f0ed;
+  --bg-sunken:  #e8e5e1;
+
+  --border:     rgba(0,0,0,0.09);
+  --border-strong: rgba(0,0,0,0.18);
+
+  --text-primary:   #111111;
+  --text-secondary: #4a4745;
+  --text-muted:     #9a9490;
+  --text-inverse:   #fafaf9;
+
+  /* Semantic accent bg colors (Tailwind badge style) */
+  --red-bg: #fde8e8;   --red-border: #fca5a5;   --red-text: #991b1b;
+  --blue-bg: #dbeafe;  --blue-border: #93c5fd;   --blue-text: #1e40af;
+  --amber-bg: #fef3c7; --amber-border: #fcd34d;  --amber-text: #92400e;
+  --green-bg: #dcfce7; --green-border: #86efac;  --green-text: #166534;
+  --gray-bg: #f3f4f6;  --gray-border: #d1d5db;   --gray-text: #374151;
+  --orange-bg: #fff7ed;--orange-border: #fed7aa;  --orange-text: #9a3412;
+  --purple-bg: #f3e8ff;--purple-border: #d8b4fe;  --purple-text: #6b21a8;
+
+  /* Intelligence accent colors */
+  --mil-green: #166534;
+  --mil-red: #991b1b;
+  --mil-amber: #92400e;
+  --mil-steel: #1e3a5f;
+
+  /* Chart line colors */
+  --c1: #2563eb; --c2: #dc2626; --c3: #d97706;
+  --c4: #16a34a; --c5: #7c3aed; --c6: #0891b2;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 8px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.10);
+
+  --header-bg: #0f0f0e;
+  --header-text: #fafaf9;
+  --tab-active-bg: #0f0f0e;
+  --tab-active-text: #fafaf9;
+  --tab-inactive-text: #6b6860;
+  --pulse-color: #ef4444;
+}
+
+/* ============================================================
+   DARK MODE
+   ============================================================ */
+[data-theme="dark"] {
+  --bg-base:    #0c0c0b;
+  --bg-surface: #161614;
+  --bg-raised:  #1f1f1d;
+  --bg-sunken:  #111110;
+
+  --border:     rgba(255,255,255,0.07);
+  --border-strong: rgba(255,255,255,0.14);
+
+  --text-primary:   #f0ece4;
+  --text-secondary: #9a9490;
+  --text-muted:     #5a5650;
+  --text-inverse:   #111110;
+
+  --red-bg: #3f1515;   --red-border: #7f1d1d;   --red-text: #fca5a5;
+  --blue-bg: #1e2d4a;  --blue-border: #1d4ed8;   --blue-text: #93c5fd;
+  --amber-bg: #3d2a0a; --amber-border: #92400e;  --amber-text: #fcd34d;
+  --green-bg: #0d2818; --green-border: #166534;  --green-text: #86efac;
+  --gray-bg: #1f2937;  --gray-border: #374151;   --gray-text: #d1d5db;
+  --orange-bg: #3d1a08;--orange-border: #9a3412;  --orange-text: #fed7aa;
+  --purple-bg: #2d1a4a;--purple-border: #6b21a8;  --purple-text: #d8b4fe;
+
+  --mil-green: #86efac;
+  --mil-red: #fca5a5;
+  --mil-amber: #fcd34d;
+  --mil-steel: #93c5fd;
+
+  --c1: #60a5fa; --c2: #f87171; --c3: #fbbf24;
+  --c4: #4ade80; --c5: #a78bfa; --c6: #22d3ee;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
+
+  --header-bg: #0d0d0c;
+  --header-text: #f5f4f1;
+  --tab-active-bg: #f5f4f1;
+  --tab-active-text: #0d0d0c;
+  --tab-inactive-text: #6a6760;
+  --pulse-color: #f87171;
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html { font-size: 16px; scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  transition: background 0.3s var(--ease-in-out), color 0.3s var(--ease-in-out);
+  font-feature-settings: 'kern' 1, 'liga' 1;
+}
+a { color: inherit; text-decoration: none; }
+a:hover { text-decoration: underline; }
+img { max-width: 100%; }
+table { border-collapse: collapse; width: 100%; }
+button { cursor: pointer; font-family: inherit; }
+
+/* Tabular nums for data */
+.data-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.site-header {
+  background: var(--header-bg);
+  color: var(--header-text);
+  padding: 0 var(--sp-6);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  border-bottom: 2px solid #c41e1e;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  flex-wrap: nowrap;
+}
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.header-logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  letter-spacing: 0.08em;
+  color: var(--header-text);
+  text-transform: uppercase;
+}
+.header-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.header-divider {
+  width: 2px;
+  height: 36px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+}
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: #fca5a5;
+  text-transform: uppercase;
+}
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 0 rgba(239,68,68,0.7);
+  animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
+  70%  { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.header-timestamp {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.06em;
+}
+.theme-toggle {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  color: rgba(255,255,255,0.8);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  transition: all 0.18s var(--ease-out);
+  white-space: nowrap;
+}
+.theme-toggle:hover {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+/* ============================================================
+   TAB NAV
+   ============================================================ */
+.tab-nav {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 var(--sp-6);
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: sticky;
+  top: 60px;
+  z-index: 90;
+  box-shadow: 0 1px 0 var(--border);
+}
+.tab-nav::-webkit-scrollbar { display: none; }
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--sp-3) var(--sp-5);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--tab-inactive-text);
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+  transition: all 0.18s var(--ease-out);
+  cursor: pointer;
+}
+.tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active {
+  color: var(--text-primary);
+  border-bottom-color: #c41e1e;
+  font-weight: 600;
+  border-bottom-width: 2px;
+}
+.tab-num {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-right: var(--sp-1);
+}
+
+/* ============================================================
+   MAIN LAYOUT
+   ============================================================ */
+.main-content {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-8) var(--sp-16);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ============================================================
+   SECTION HEADERS
+   ============================================================ */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-3);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.section-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: var(--text-primary);
+  margin-bottom: var(--sp-1);
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+/* ============================================================
+   CARD
+   ============================================================ */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-sm);
+}
+.card-sm {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ============================================================
+   BADGES
+   ============================================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  text-transform: uppercase;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.badge-red    { background: var(--red-bg);    border-color: var(--red-border);    color: var(--red-text);    }
+.badge-blue   { background: var(--blue-bg);   border-color: var(--blue-border);   color: var(--blue-text);   }
+.badge-amber  { background: var(--amber-bg);  border-color: var(--amber-border);  color: var(--amber-text);  }
+.badge-green  { background: var(--green-bg);  border-color: var(--green-border);  color: var(--green-text);  }
+.badge-gray   { background: var(--gray-bg);   border-color: var(--gray-border);   color: var(--gray-text);   }
+.badge-orange { background: var(--orange-bg); border-color: var(--orange-border); color: var(--orange-text); }
+.badge-purple { background: var(--purple-bg); border-color: var(--purple-border); color: var(--purple-text); }
+
+/* ============================================================
+   OPERATIONS BANNER (Tab 1 top)
+   ============================================================ */
+.ops-banner {
+  background: #0f0f0e;
+  border: 1px solid rgba(196,30,30,0.3);
+  border-left: 4px solid #c41e1e;
+  border-radius: var(--r-lg);
+  padding: var(--sp-5) var(--sp-6);
+  margin-bottom: var(--sp-6);
+  color: #fafaf9;
+  position: relative;
+  overflow: hidden;
+}
+
+.ops-banner-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.ops-active {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: rgba(239,68,68,0.2);
+  border: 1px solid rgba(239,68,68,0.4);
+  border-radius: var(--r-sm);
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #fca5a5;
+}
+.ops-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  color: #f0ece4;
+}
+.ops-name span { color: #f0ece4; }
+.ops-name .divider { color: rgba(255,255,255,0.25); margin: 0 var(--sp-3); }
+.ops-stats {
+  display: flex;
+  gap: var(--sp-6);
+  flex-wrap: wrap;
+}
+.ops-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ops-stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+}
+.ops-stat-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e5e7eb;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.ops-stat-value.highlight { color: #ef8f8f; }
+.ops-quote {
+  margin-top: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  background: rgba(255,255,255,0.04);
+  border-left: 2px solid rgba(255,255,255,0.2);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  font-size: 0.82rem;
+  font-style: italic;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.6;
+}
+.ops-quote cite {
+  display: block;
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.35);
+  margin-top: var(--sp-1);
+  letter-spacing: 0.04em;
+}
+
+/* ============================================================
+   GRID LAYOUTS
+   ============================================================ */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); }
+.grid-23 { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-4); }
+.grid-halves { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-6); align-items: start; }
+
+/* ============================================================
+   TAB 1 SPLIT LAYOUT — News (65%) | Markets Sidebar (35%)
+   ============================================================ */
+.live-split {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--sp-6);
+  align-items: start;
+}
+.live-news-col {
+  min-width: 0;
+}
+.live-sidebar {
+  position: sticky;
+  top: calc(60px + 45px + var(--sp-4));
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-sm);
+}
+.sidebar-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  gap: var(--sp-3);
+}
+.sidebar-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+}
+.sidebar-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+.market-compact-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.market-compact-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--card-accent, #2563eb);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  text-decoration: none;
+  transition: background 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out);
+  color: inherit;
+}
+.market-compact-card:hover {
+  background: var(--bg-raised);
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+}
+.market-compact-prob {
+  font-family: var(--font-mono);
+  font-size: clamp(1.1rem, 1.8vw, 1.4rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 1;
+  flex-shrink: 0;
+  min-width: 72px;
+  text-align: right;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.market-compact-prob.high   { color: #c41e1e; }
+.market-compact-prob.medium { color: #c47a00; }
+.market-compact-prob.low    { color: #16863a; }
+.market-compact-info {
+  flex: 1;
+  min-width: 0;
+}
+.market-compact-question {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 3px;
+}
+.market-compact-vol {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+@media (max-width: 1024px) {
+  .live-split {
+    grid-template-columns: 1fr 280px;
+  }
+}
+@media (max-width: 768px) {
+  .live-split {
+    grid-template-columns: 1fr;
+  }
+  .live-news-col { order: 2; }
+  .live-sidebar { order: 1; position: static; }
+}
+
+/* ============================================================
+   MARKET QUAD CARDS
+   ============================================================ */
+.market-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  transition: box-shadow 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+.market-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--card-accent, #2563eb);
+}
+.market-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+.market-question {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  min-height: 2.8em;
+}
+.market-prob {
+  font-family: var(--font-mono);
+  font-size: clamp(2.2rem, 4vw, 3rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-primary);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.market-prob.high   { color: #dc2626; }
+.market-prob.medium { color: #d97706; }
+.market-prob.low    { color: #16a34a; }
+.market-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.market-outcome {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.market-vol {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+.market-link {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--blue-text);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+.market-link:hover { text-decoration: underline; }
+
+/* ============================================================
+   CHART CONTAINER
+   ============================================================ */
+.chart-wrap {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.chart-inner { position: relative; height: 260px; }
+.chart-note {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: var(--sp-3);
+  letter-spacing: 0.05em;
+}
+
+/* ============================================================
+   NEWS FEED
+   ============================================================ */
+.news-feed-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.last-updated-row {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.refresh-timer {
+  color: var(--blue-text);
+  font-weight: 600;
+}
+.news-list { display: flex; flex-direction: column; gap: 0; }
+.news-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--bg-sunken);
+  border-radius: 0;
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  transition: border-left-color 0.18s, background 0.18s;
+  animation: slideIn 0.4s var(--ease-out);
+}
+.news-item:first-child { border-radius: var(--r-md) var(--r-md) 0 0; }
+.news-item:last-child { border-radius: 0 0 var(--r-md) var(--r-md); }
+.news-item + .news-item { border-top: none; }
+.news-item:hover { background: var(--bg-raised); }
+.news-item.breaking {
+  border-left-color: #c41e1e;
+}
+.news-item.osint { border-left-color: #7c3aed; }
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.news-item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.news-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+.news-title a { color: inherit; }
+.news-title a:hover { color: #1e40af; text-decoration: none; }
+.news-excerpt {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.news-excerpt a {
+  color: inherit;
+  text-decoration: none;
+  pointer-events: none;
+}
+.news-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.news-time {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+.osint-card {
+  background: var(--purple-bg);
+  border: 1px solid var(--purple-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.osint-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.osint-account {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--purple-text);
+}
+.osint-text {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+.osint-link {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--purple-text);
+  text-decoration: underline;
+}
+
+/* ============================================================
+   TAB 2: SITUATION OVERVIEW
+   ============================================================ */
+.pdb-block {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  margin-bottom: var(--sp-6);
+}
+.pdb-classification {
+  display: none; /* Classification markers removed — see task requirements */
+}
+.class-ts, .class-s, .class-u { display: none; }
+.pdb-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: var(--sp-4);
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+.pdb-body p {
+  font-size: 0.9rem;
+  line-height: 1.75;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-4);
+}
+.pdb-body p:last-child { margin-bottom: 0; }
+.key-judgment {
+  display: none; /* Classification-style prefix removed */
+}
+.assessment {
+  display: none; /* Classification-style prefix removed */
+}
+
+/* Timeline */
+.timeline { position: relative; padding-left: var(--sp-8); }
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 6px;
+  bottom: 0;
+  width: 2px;
+  background: var(--border-strong);
+}
+.timeline-item {
+  position: relative;
+  margin-bottom: var(--sp-5);
+  padding-bottom: var(--sp-1);
+}
+.timeline-dot {
+  position: absolute;
+  left: calc(-1 * var(--sp-8) + 4px);
+  top: 5px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-strong);
+}
+.timeline-dot.critical { border-color: #dc2626; background: #dc2626; }
+.timeline-dot.major    { border-color: #d97706; background: #d97706; }
+.timeline-dot.milestone{ border-color: #2563eb; background: #2563eb; }
+.timeline-dot.current  { border-color: #16a34a; background: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,0.2); }
+.timeline-date {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+.timeline-event {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: 2px;
+}
+.timeline-detail {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Key Facts Cards */
+.facts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+.fact-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  text-align: center;
+}
+.fact-number {
+  font-family: var(--font-mono);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 1;
+  margin-bottom: var(--sp-2);
+}
+.fact-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.fact-sub {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: var(--sp-1);
+}
+
+/* ============================================================
+   TAB 3: FORCES
+   ============================================================ */
+.forces-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-5);
+  margin-bottom: var(--sp-6);
+}
+.force-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.force-header {
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.force-header.us { background: linear-gradient(135deg, #1e3a5f, #1e40af); }
+.force-header.iran { background: linear-gradient(135deg, #3f1515, #7f1d1d); }
+.force-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+.force-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.force-table {
+  width: 100%;
+}
+.force-table th {
+  padding: var(--sp-2) var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--bg-raised);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.force-table td {
+  padding: var(--sp-3) var(--sp-4);
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.force-table tr:last-child td { border-bottom: none; }
+.force-table td:first-child {
+  font-weight: 600;
+  color: var(--text-primary);
+  width: 40%;
+}
+.force-table td:last-child {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.asset-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid;
+  margin: 1px;
+}
+.asset-naval  { background: var(--blue-bg); border-color: var(--blue-border); color: var(--blue-text); }
+.asset-air    { background: var(--green-bg); border-color: var(--green-border); color: var(--green-text); }
+.asset-missile{ background: var(--red-bg); border-color: var(--red-border); color: var(--red-text); }
+.asset-isr    { background: var(--amber-bg); border-color: var(--amber-border); color: var(--amber-text); }
+
+/* Proxy status */
+.proxy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+.proxy-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  border-top: 3px solid;
+}
+.proxy-card.threat-high   { border-top-color: #dc2626; }
+.proxy-card.threat-medium { border-top-color: #d97706; }
+.proxy-card.threat-low    { border-top-color: #16a34a; }
+.proxy-card.threat-minimal{ border-top-color: #a8a29e; }
+.proxy-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: var(--sp-1);
+}
+.proxy-region {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-3);
+}
+.proxy-threat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-3);
+}
+.threat-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.threat-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-raised);
+  position: relative;
+  margin-top: var(--sp-2);
+}
+.threat-bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 1s var(--ease-out);
+}
+.proxy-notes {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ============================================================
+   TAB 4: SCENARIOS
+   ============================================================ */
+.scenario-cone {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  margin-bottom: var(--sp-6);
+}
+.cone-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: var(--sp-2);
+  letter-spacing: -0.01em;
+}
+.cone-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-5);
+}
+.scenarios-list { display: flex; flex-direction: column; gap: var(--sp-5); }
+.scenario-item {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.scenario-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  cursor: pointer;
+  transition: background 0.18s var(--ease-out);
+}
+.scenario-header:hover { background: var(--bg-raised); }
+.scenario-prob-bar {
+  width: 80px;
+  flex-shrink: 0;
+}
+.scenario-prob-num {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 1;
+}
+.scenario-prob-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.scenario-info { flex: 1; }
+.scenario-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: var(--sp-1);
+}
+.scenario-tagline {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.scenario-body {
+  padding: 0 var(--sp-5) var(--sp-5);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+.scenario-body.collapsed { display: none; }
+.scenario-col-title {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-2);
+}
+.scenario-col ul {
+  padding-left: 1em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.scenario-col li {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.scenario-indicator {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  margin-top: var(--sp-2);
+}
+.indicator-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+  margin-bottom: 3px;
+}
+.probability-bar-row {
+  display: flex;
+  gap: 0;
+  height: 8px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  margin: var(--sp-4) 0;
+}
+.prob-segment { transition: width 1s var(--ease-out); }
+
+/* What to Watch */
+.watch-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.watch-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+.watch-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.watch-dot.red    { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.15); }
+.watch-dot.amber  { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+.watch-dot.green  { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.15); }
+.watch-text {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.watch-text strong { color: var(--text-primary); }
+
+/* ============================================================
+   POLYMARKET TREND CHARTS (SCENARIOS TAB)
+   ============================================================ */
+.pm-trends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+.pm-trend-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  transition: box-shadow 180ms var(--ease-out), border-color 180ms var(--ease-out);
+}
+.pm-trend-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+  background: var(--bg-raised);
+}
+.pm-trend-card a {
+  color: inherit;
+  text-decoration: none;
+}
+.pm-trend-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.pm-trend-question {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+  flex: 1;
+}
+.pm-trend-prob {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1;
+}
+.pm-trend-prob.high { color: #dc2626; }
+.pm-trend-prob.medium { color: #d97706; }
+.pm-trend-prob.low { color: #2563eb; }
+.pm-trend-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+.pm-trend-vol {
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+.pm-trend-chart-wrap {
+  height: 120px;
+  position: relative;
+  padding: 0 4px;
+}
+.pm-trend-delta {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.pm-trend-delta.up { color: #16a34a; }
+.pm-trend-delta.down { color: #dc2626; }
+.pm-trend-delta.flat { color: var(--text-muted); }
+
+@media (max-width: 720px) {
+  .pm-trends-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   TAB 5: ECONOMIC IMPACT
+   ============================================================ */
+.scenario-table {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: var(--sp-6);
+}
+.scenario-table th {
+  background: var(--bg-raised);
+  padding: var(--sp-3) var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: left;
+  border-bottom: 1px solid var(--border-strong);
+  position: sticky;
+  top: 0;
+}
+.scenario-table td {
+  padding: var(--sp-3) var(--sp-4);
+  font-size: 0.83rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.scenario-table tr:last-child td { border-bottom: none; }
+.scenario-table tr:hover td { background: var(--bg-raised); }
+.price-range {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.price-low    { color: #16a34a; }
+.price-mid    { color: #d97706; }
+.price-high   { color: #dc2626; }
+.price-crisis { color: #7c3aed; }
+
+.market-indicator-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+.mkt-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+}
+.mkt-card-name {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-2);
+}
+.mkt-card-price {
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: var(--sp-1);
+}
+.mkt-card-change {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.change-up { color: #16a34a; }
+.change-down { color: #dc2626; }
+
+.trade-ideas { display: flex; flex-direction: column; gap: var(--sp-4); margin-bottom: var(--sp-6); }
+.trade-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-4);
+}
+.trade-direction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--sp-1);
+  width: 60px;
+}
+.trade-dir-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid;
+}
+.dir-long  { background: var(--green-bg); border-color: var(--green-border); color: var(--green-text); }
+.dir-short { background: var(--red-bg); border-color: var(--red-border); color: var(--red-text); }
+.dir-hedge { background: var(--amber-bg); border-color: var(--amber-border); color: var(--amber-text); }
+.trade-tickers {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-align: center;
+  margin-top: var(--sp-1);
+}
+.trade-body { flex: 1; }
+.trade-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.92rem;
+  margin-bottom: var(--sp-2);
+}
+.trade-rationale {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.conv-risk {
+  margin-top: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--amber-text);
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  border-radius: var(--r-sm);
+  padding: 2px 8px;
+  display: inline-block;
+}
+
+/* Hormuz data */
+.hormuz-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+.hormuz-stat {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  text-align: center;
+}
+.hormuz-num {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: var(--sp-2);
+}
+.hormuz-label {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+/* ============================================================
+   TAB 6: ANALYTICAL FRAMEWORKS
+   ============================================================ */
+.ach-table {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: var(--sp-6);
+  font-size: 0.8rem;
+}
+.ach-table th {
+  background: var(--bg-raised);
+  padding: var(--sp-3) var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-strong);
+  text-align: center;
+}
+.ach-table th:first-child { text-align: left; }
+.ach-table td {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  vertical-align: middle;
+}
+.ach-table td:first-child { text-align: left; font-weight: 500; }
+.ach-table tr:last-child td { border-bottom: none; }
+.ach-cell { font-size: 1rem; }
+.ach-c { color: #16a34a; }  /* Consistent with hypothesis */
+.ach-i { color: #dc2626; }  /* Inconsistent */
+.ach-n { color: #a8a29e; }  /* Neutral / Not applicable */
+
+.framework-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  margin-bottom: var(--sp-6);
+}
+.framework-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: var(--sp-2);
+  letter-spacing: -0.01em;
+}
+.framework-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-4);
+}
+.redteam-points {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.redteam-point {
+  padding: var(--sp-3) var(--sp-4);
+  border-left: 3px solid #dc2626;
+  background: var(--red-bg);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.redteam-point-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--red-text);
+  margin-bottom: var(--sp-1);
+}
+.redteam-point-text {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.analogue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--sp-4);
+}
+.analogue-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+}
+.analogue-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin-bottom: var(--sp-1);
+}
+.analogue-year {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  margin-bottom: var(--sp-3);
+}
+.analogue-text {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.analogue-verdict {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  margin-top: var(--sp-3);
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  display: block;
+  border: 1px solid;
+  line-height: 1.45;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Game theory */
+.game-matrix {
+  overflow-x: auto;
+}
+.game-matrix table {
+  min-width: 400px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.game-matrix th {
+  background: var(--bg-raised);
+  padding: var(--sp-3) var(--sp-5);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+.game-matrix td {
+  padding: var(--sp-3) var(--sp-5);
+  text-align: center;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--border);
+}
+.game-matrix td:first-child {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  background: var(--bg-raised);
+  text-align: left;
+}
+.cell-good   { color: #16a34a; font-weight: 600; }
+.cell-bad    { color: #dc2626; font-weight: 600; }
+.cell-mid    { color: #d97706; font-weight: 600; }
+.cell-nash   { background: rgba(245,158,11,0.1); font-weight: 700; border: 2px solid var(--amber-border); }
+
+/* Expert views */
+.expert-quotes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.expert-quote {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+}
+.expert-text {
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-bottom: var(--sp-3);
+  position: relative;
+  padding-left: var(--sp-5);
+}
+.expert-text::before {
+  content: '"';
+  position: absolute;
+  left: 0;
+  top: -4px;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--text-muted);
+  line-height: 1;
+}
+.expert-attribution {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.expert-name {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+.expert-title {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1024px) {
+  .forces-compare { grid-template-columns: 1fr; }
+  .grid-halves { grid-template-columns: 1fr; }
+  .scenario-body { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .main-content { padding: var(--sp-4) var(--sp-4) var(--sp-12); }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .grid-23 { grid-template-columns: 1fr 1fr; }
+  .tab-btn { padding: var(--sp-3) var(--sp-3); font-size: 0.72rem; }
+  .ops-stats { gap: var(--sp-4); }
+  .trade-card { grid-template-columns: 1fr; }
+  .trade-direction { flex-direction: row; width: auto; }
+  .market-prob { font-size: 2rem; }
+  .site-header { padding: var(--sp-3) var(--sp-4); }
+  .header-divider { display: none; }
+}
+@media (max-width: 480px) {
+  .grid-23 { grid-template-columns: 1fr; }
+  .market-indicator-row { grid-template-columns: 1fr 1fr; }
+  .facts-grid { grid-template-columns: 1fr 1fr; }
+  .proxy-grid { grid-template-columns: 1fr; }
+  .analogue-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   MISC UTILITY
+   ============================================================ */
+.mt-4 { margin-top: var(--sp-4); }
+.mt-6 { margin-top: var(--sp-6); }
+.mt-8 { margin-top: var(--sp-8); }
+.mb-2 { margin-bottom: var(--sp-2); }
+.mb-4 { margin-bottom: var(--sp-4); }
+.mb-6 { margin-bottom: var(--sp-6); }
+.mb-8 { margin-bottom: var(--sp-8); }
+.text-sm { font-size: 0.82rem; }
+.text-xs { font-size: 0.72rem; }
+.text-muted { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
+.font-mono { font-family: var(--font-mono); }
+.font-display { font-family: var(--font-display); }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.gap-2 { gap: var(--sp-2); }
+.gap-3 { gap: var(--sp-3); }
+.flex-wrap { flex-wrap: wrap; }
+.w-full { width: 100%; }
+
+/* fade in fresh data */
+.fade-in { animation: fadeIn 0.5s var(--ease-out); }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-10);
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  border-top-color: var(--blue-text);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   CHAT POPUP (BLOOMBERG/SITUATION ROOM STYLE)
+   ============================================================ */
+/* Chat widget — Facebook Messenger style: collapsed bar at bottom-right, expands vertically */
+.chat-widget {
+  position: fixed;
+  bottom: 0;
+  right: 24px;
+  width: 340px;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  transition: height 250ms cubic-bezier(0.16,1,0.3,1), box-shadow 250ms;
+}
+.chat-widget.collapsed {
+  height: 40px;
+  box-shadow: 0 -1px 8px rgba(0,0,0,0.10);
+}
+.chat-widget.expanded {
+  height: 480px;
+  box-shadow: 0 -4px 32px rgba(0,0,0,0.18);
+}
+
+/* Title bar — always visible, acts as the toggle */
+.chat-titlebar {
+  background: #0f0f0e;
+  color: #fafaf9;
+  height: 40px;
+  padding: 0 var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  flex-shrink: 0;
+  user-select: none;
+}
+.chat-titlebar-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.chat-titlebar-online {
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.chat-titlebar-badge {
+  margin-left: auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.chat-titlebar-badge.active { display: flex; }
+.chat-titlebar-chevron {
+  margin-left: auto;
+  font-size: 14px;
+  transition: transform 250ms;
+  color: rgba(255,255,255,0.5);
+}
+.chat-widget.expanded .chat-titlebar-chevron { transform: rotate(180deg); }
+.chat-titlebar-dots {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.chat-titlebar-dots .chat-online-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* Chat body — hidden when collapsed */
+.chat-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-strong);
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms;
+}
+.chat-widget.expanded .chat-body {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.chat-online-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.chat-identity-bar {
+  background: var(--bg-raised);
+  padding: var(--sp-2) var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.chat-my-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.chat-my-name {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+.chat-my-label {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  overscroll-behavior: contain;
+}
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 88%;
+}
+.chat-msg.mine { align-self: flex-end; }
+.chat-msg.other { align-self: flex-start; }
+
+.chat-msg-sender {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.chat-msg-bubble {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+.chat-msg.mine .chat-msg-bubble {
+  background: #1a1a1a;
+  color: #e8e5e1;
+}
+.chat-msg.other .chat-msg-bubble {
+  background: var(--bg-raised);
+  border-left: 2px solid var(--border-strong);
+}
+.chat-msg-time {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: var(--text-muted);
+}
+.chat-msg.mine .chat-msg-time { text-align: right; }
+
+.chat-system-msg {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  padding: var(--sp-2) 0;
+}
+
+.chat-input-area {
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+}
+.chat-input {
+  flex: 1;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: var(--sp-2) var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 180ms;
+}
+.chat-input::placeholder { color: var(--text-muted); font-family: var(--font-mono); }
+.chat-input:focus { border-color: var(--border-strong); }
+.chat-send-btn {
+  background: #0f0f0e;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 2px;
+  color: #fafaf9;
+  padding: var(--sp-2) var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: opacity 180ms, background 180ms;
+}
+.chat-send-btn:hover { background: #2a2a2a; }
+.chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (max-width: 440px) {
+  .chat-widget {
+    width: calc(100vw - 16px);
+    right: 8px;
+  }
+  .chat-widget.expanded {
+    height: calc(100vh - 60px);
+    max-height: 560px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="site-header">
+  <div class="header-brand">
+    <div>
+      <div class="header-logo">Iran Crisis Monitor</div>
+      <div class="header-subtitle">Real-Time Intelligence Dashboard</div>
+    </div>
+    <div class="header-divider"></div>
+    <div class="header-status">
+      <div class="pulse-dot"></div>
+      <span>Active Conflict — 28 Feb 2026</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-timestamp" id="headerTimestamp">Loading...</div>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">◐ Dark Mode</button>
+  </div>
+</header>
+
+<!-- ============================================================
+     TAB NAVIGATION
+     ============================================================ -->
+<nav class="tab-nav" role="tablist">
+  <button class="tab-btn active" onclick="switchTab(0)" role="tab" aria-selected="true">
+    <span class="tab-num">01</span>Live Monitoring
+  </button>
+  <button class="tab-btn" onclick="switchTab(1)" role="tab">
+    <span class="tab-num">02</span>Situation Overview
+  </button>
+  <button class="tab-btn" onclick="switchTab(2)" role="tab">
+    <span class="tab-num">03</span>Forces &amp; Capabilities
+  </button>
+  <button class="tab-btn" onclick="switchTab(3)" role="tab">
+    <span class="tab-num">04</span>Scenarios &amp; Watch
+  </button>
+  <button class="tab-btn" onclick="switchTab(4)" role="tab">
+    <span class="tab-num">05</span>Economic Impact
+  </button>
+  <button class="tab-btn" onclick="switchTab(5)" role="tab">
+    <span class="tab-num">06</span>Analytical Frameworks
+  </button>
+</nav>
+
+<!-- ============================================================
+     MAIN CONTENT
+     ============================================================ -->
+<main class="main-content">
+
+<!-- ==================== TAB 1: LIVE MONITORING ==================== -->
+<section class="tab-panel active" id="tab-0">
+
+  <!-- OPERATIONS BANNER -->
+  <div class="ops-banner">
+    <div class="ops-banner-header">
+      <div class="ops-active">
+        <div class="pulse-dot"></div>
+        Active — Day 1
+      </div>
+      <div class="ops-name">
+        <span>Operation Epic Fury</span>
+        <span class="divider">|</span>
+        <span>Operation Lion's Roar</span>
+      </div>
+    </div>
+    <div class="ops-stats">
+      <div class="ops-stat">
+        <div class="ops-stat-label">Strike Cities</div>
+        <div class="ops-stat-value highlight data-num">5+</div>
+      </div>
+      <div class="ops-stat">
+        <div class="ops-stat-label">Carrier Strike Groups</div>
+        <div class="ops-stat-value data-num">2 CSGs</div>
+      </div>
+      <div class="ops-stat">
+        <div class="ops-stat-label">Total Ships Tracked</div>
+        <div class="ops-stat-value data-num">14+</div>
+      </div>
+      <div class="ops-stat">
+        <div class="ops-stat-label">Iran Retaliation</div>
+        <div class="ops-stat-value highlight data-num">Active</div>
+      </div>
+      <div class="ops-stat">
+        <div class="ops-stat-label">WTI Oil</div>
+        <div class="ops-stat-value data-num">$67.40</div>
+      </div>
+      <div class="ops-stat">
+        <div class="ops-stat-label">Gold</div>
+        <div class="ops-stat-value data-num">$5,296</div>
+      </div>
+      <div class="ops-stat">
+        <div class="ops-stat-label">Bitcoin</div>
+        <div class="ops-stat-value data-num">$63,000</div>
+      </div>
+    </div>
+    <div class="ops-quote">
+      "We will destroy their missiles and raze their missile industry, annihilate their Navy — to the Iranian people, your hour of freedom is at hand."
+      <cite>— President Donald J. Trump, 28 February 2026</cite>
+    </div>
+  </div>
+
+  <!-- SPLIT LAYOUT: NEWS LEFT, MARKETS RIGHT -->
+  <div class="live-split">
+
+    <!-- LEFT: LIVE NEWS FEED -->
+    <div class="live-news-col">
+      <div class="news-feed-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:3px; height:22px; background:#c41e1e; border-radius:2px; flex-shrink:0;"></div>
+          <div class="section-title" style="font-size:1.1rem; font-weight:700; letter-spacing:-0.02em;">Live Feed</div>
+        </div>
+        <div class="last-updated-row">
+          <span id="lastUpdatedDisplay">Loading...</span>
+          <span>·</span>
+          <span>Refreshing in <span class="refresh-timer data-num" id="refreshCountdown">60</span>s</span>
+        </div>
+      </div>
+      <div style="padding:0 0 var(--sp-2) 0; display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-family:var(--font-mono); font-size:0.6rem;">
+        <span style="color:var(--text-muted); letter-spacing:0.06em; text-transform:uppercase; font-weight:600;">X / OSINT:</span>
+        <a href="https://x.com/AuroraIntel" target="_blank" rel="noopener" style="color:var(--blue-text); text-decoration:none;">@AuroraIntel</a>
+        <a href="https://x.com/sentdefender" target="_blank" rel="noopener" style="color:var(--blue-text); text-decoration:none;">@sentdefender</a>
+        <a href="https://x.com/IntelCrab" target="_blank" rel="noopener" style="color:var(--blue-text); text-decoration:none;">@IntelCrab</a>
+        <a href="https://x.com/OSINTdefender" target="_blank" rel="noopener" style="color:var(--blue-text); text-decoration:none;">@OSINTdefender</a>
+        <a href="https://x.com/Global_Mil_Info" target="_blank" rel="noopener" style="color:var(--blue-text); text-decoration:none;">@Global_Mil_Info</a>
+        <a href="https://x.com/RALee85" target="_blank" rel="noopener" style="color:var(--blue-text); text-decoration:none;">@RALee85</a>
+        <a href="https://x.com/search?q=iran+strike+OR+irgc+OR+tehran+OR+hormuz&amp;f=live" target="_blank" rel="noopener" style="color:var(--text-muted); text-decoration:none; border:1px solid var(--border); padding:1px 6px; border-radius:3px;">Live search →</a>
+      </div>
+      <div class="news-list" id="newsFeed">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <div class="text-xs text-muted font-mono">FETCHING INTELLIGENCE FEED...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: POLYMARKET ODDS SIDEBAR -->
+    <div class="live-sidebar">
+      <div class="sidebar-header">
+        <div>
+          <div class="sidebar-title">Polymarket Odds</div>
+          <div class="sidebar-subtitle">CROWD PROBABILITY · LIVE</div>
+        </div>
+      <div id="marketLastUpdated" class="badge badge-gray" style="font-size:0.55rem; white-space:nowrap; flex-shrink:0; margin-top:2px;">Loading...</div>
+      </div>
+      <div class="market-compact-list" id="marketGrid">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <div class="text-xs text-muted font-mono">FETCHING...</div>
+        </div>
+      </div>
+      <div style="margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--border);">
+        <a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" style="font-family: var(--font-mono); font-size: 0.62rem; color: var(--text-muted); letter-spacing: 0.06em;">View all markets on Polymarket →</a>
+      </div>
+    </div>
+
+  </div>
+
+</section>
+
+<!-- ==================== TAB 2: SITUATION OVERVIEW ==================== -->
+<section class="tab-panel" id="tab-1">
+
+  <!-- PDB Block -->
+  <div class="pdb-block">
+<div class="pdb-title">Presidential Daily Brief Summary: Iran-US-Israel Conflict — Day 1</div>
+    <div class="pdb-body">
+      <p>
+        The United States and Israel jointly launched coordinated air and naval strikes against Iran on 28 February 2026, initiating the most significant US military engagement in the Middle East since the 2003 invasion of Iraq. Operation Epic Fury and Operation Lion's Roar represent a fundamental strategic shift: Washington has moved from diplomacy and deterrence to coercive military action, with the stated objective of dismantling Iran's missile production infrastructure, IRGC command apparatus, and residual nuclear facilities. Crucially, the campaign's political framing — Trump's direct appeals to the Iranian population to "take over your government" — signals an implicit regime change objective layered beneath the military campaign.
+      </p>
+      <p>
+        The immediate trigger was the collapse of the third Geneva round of nuclear negotiations on 26 February, compounding three months of deteriorating relations following Iran's massacre of approximately 12,000 protesters in January 2026 — the bloodiest crackdown in the Islamic Republic's history. Iran had publicly announced resumption of enrichment to 90% purity in late January, crossing a threshold the US had previously characterized as a red line. The deployment of two carrier strike groups — USS Abraham Lincoln and USS Gerald R. Ford — in the preceding weeks provided the force posture necessary for a campaign of this scale.
+      </p>
+      <p>
+        Iran's retaliatory response has been swift but calibrated: IRGC ballistic missiles and Shahed UAVs have struck US military facilities in Bahrain, Kuwait, and the UAE in what Iranian commanders describe as the "first wave." Khamenei has been relocated to a hardened underground facility. The Hormuz Strait has seen commercial shipping halted and early indicators of IRGC Navy repositioning consistent with pre-mining operations. The trajectory of the next 48-72 hours will determine whether this conflict follows a compressed arc toward a coercive ceasefire or escalates toward a prolonged campaign with existential risk dimensions.
+      </p>
+    </div>
+  </div>
+
+  <!-- Key Facts -->
+  <div class="section-label">Key Statistics</div>
+  <div class="facts-grid mb-6">
+    <div class="fact-card">
+      <div class="fact-number" style="color:#dc2626;">~12,000</div>
+      <div class="fact-label">Protesters Killed</div>
+      <div class="fact-sub">Jan 8–9, 2026 — 48 hours</div>
+    </div>
+    <div class="fact-card">
+      <div class="fact-number" style="color:#d97706;">440 kg</div>
+      <div class="fact-label">Iran 90%+ HEU Stockpile</div>
+      <div class="fact-sub">Sufficient for ~9 warheads</div>
+    </div>
+    <div class="fact-card">
+      <div class="fact-number" style="color:#2563eb;">2 CSGs</div>
+      <div class="fact-label">US Carrier Groups Deployed</div>
+      <div class="fact-sub">Lincoln + Ford — 190+ aircraft</div>
+    </div>
+    <div class="fact-card">
+      <div class="fact-number" style="color:#16a34a;">3</div>
+      <div class="fact-label">Failed Nuclear Rounds</div>
+      <div class="fact-sub">Feb 6, Feb 15, Feb 26, 2026</div>
+    </div>
+    <div class="fact-card">
+      <div class="fact-number" style="color:#7c3aed;">5+</div>
+      <div class="fact-label">Cities Struck</div>
+      <div class="fact-sub">Tehran, Isfahan, Qom, Karaj, Kermanshah</div>
+    </div>
+    <div class="fact-card">
+      <div class="fact-number" style="color:#dc2626;">20 Mb/d</div>
+      <div class="fact-label">Hormuz Flow at Risk</div>
+      <div class="fact-sub">~20% of global petroleum</div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="section-label">Conflict Timeline</div>
+  <div class="card mb-6" style="padding: var(--sp-6);">
+    <div class="section-title mb-4">Path to War: June 2025 – February 2026</div>
+    <div class="timeline">
+
+      <div class="timeline-item">
+        <div class="timeline-dot major"></div>
+        <div class="timeline-date">13 JUNE 2025</div>
+        <div class="timeline-event">Israel launches Operation Rising Lion</div>
+        <div class="timeline-detail">Israel strikes Iranian nuclear sites and IRGC infrastructure in the opening move of the "12-Day War." 100+ aircraft including F-35I Adirs strike Natanz, Fordow, and Parchin. Iran activates proxies across the region.</div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot critical"></div>
+        <div class="timeline-date">21–22 JUNE 2025</div>
+        <div class="timeline-event">US launches Operation Midnight Hammer</div>
+        <div class="timeline-detail">B-2 Spirit stealth bombers drop GBU-57 Massive Ordnance Penetrators on Fordow bunker complex, with direct authorization from President Trump. Iran's centrifuge cascade at Fordow assessed as destroyed. First direct US military action against Iran since the 1988 tanker war.</div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot milestone"></div>
+        <div class="timeline-date">23 JUNE 2025</div>
+        <div class="timeline-event">Ceasefire — Omani-mediated pause</div>
+        <div class="timeline-detail">Qatar and Oman broker a tenuous ceasefire after 12 days of exchanges. Iran retains approximately 60% of pre-war centrifuge capacity. Fordow deemed permanently degraded. No formal agreement on nuclear program curtailment.</div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot milestone"></div>
+        <div class="timeline-date">26 SEPTEMBER 2025</div>
+        <div class="timeline-event">UN JCPOA snapback mechanism triggered</div>
+        <div class="timeline-detail">European powers trigger the UN Security Council snapback clause, reimposing all pre-2015 UN sanctions on Iran. Russia and China protest but cannot veto. Iran announces withdrawal from Non-Proliferation Treaty oversight framework.</div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot milestone"></div>
+        <div class="timeline-date">9 OCTOBER 2025</div>
+        <div class="timeline-event">Gaza ceasefire agreement</div>
+        <div class="timeline-detail">Qatar-brokered deal ends active Gaza hostilities. Hamas formally dissolves its political-military structure in exchange for reconstruction guarantees and prisoner releases. Iran's most potent regional card removed from the board.</div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot major"></div>
+        <div class="timeline-date">28 DECEMBER 2025</div>
+        <div class="timeline-event">Nationwide protests erupt in Iran</div>
+        <div class="timeline-detail">Economic collapse triggers mass protests across 23 provinces. Iranian rial hits historic low at 800,000 per USD. IRGC mobilizes against protesters. State-controlled media blackout imposed.</div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot critical"></div>
+        <div class="timeline-date">8–9 JANUARY 2026</div>
+        <div class="timeline-event">IRGC massacre — ~12,000 dead in 48 hours</div>
+        <div class="timeline-detail">In the bloodiest crackdown in the Islamic Republic's history, IRGC paramilitaries and Basij militia kill an estimated 12,000 protesters over 48 hours. Mass graves documented by satellite imagery. US, EU, and UK impose emergency sanctions packages. Trump calls for "liberation of the Iranian people."</div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot milestone"></div>
+        <div class="timeline-date">26 JANUARY 2026</div>
+        <div class="timeline-event">USS Abraham Lincoln CSG arrives Arabian Sea</div>
+        <div class="timeline-detail">Lincoln battle group transits Strait of Hormuz with destroyer escort. Weeks later, USS Gerald R. Ford arrives in Indian Ocean — first time both Nimitz and Ford-class carriers operate simultaneously in US CENTCOM AOR.</div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot major"></div>
+        <div class="timeline-date">6 FEB — 26 FEB 2026</div>
+        <div class="timeline-event">Three rounds of Geneva nuclear talks fail</div>
+        <div class="timeline-detail">Rounds on February 6, February 15, and February 26 collapse in sequence. Iran demands complete sanctions removal before any enrichment halt; US demands verified enrichment suspension below 5% before sanction relief. Iran announces acceleration of 90% enrichment at Isfahan tunnels. IAEA requests emergency access; Iran declines.</div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot critical" style="background:#ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,0.3);"></div>
+        <div class="timeline-date">28 FEBRUARY 2026 — TODAY</div>
+        <div class="timeline-event">US + Israel launch joint strikes — Operation Epic Fury / Operation Lion's Roar</div>
+        <div class="timeline-detail">Zero-hour at 02:00 local time. US B-2 bombers, naval Tomahawks from 7 destroyers, and Israeli IAF sorties strike targets in Tehran, Isfahan, Qom, Karaj, and Kermanshah. Targets include Shahab/Sejjil missile production facilities, IRGC Quds Force headquarters, Isfahan nuclear complex, and IRGC Navy surface combatants. Iran launches retaliatory ballistic missiles and Shahed UAVs at US bases in Bahrain, Kuwait, and UAE.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- What triggered this -->
+  <div class="pdb-block">
+<div class="pdb-title">Root Cause Analysis: Why Did Deterrence Fail?</div>
+    <div class="pdb-body">
+      <p>
+        The failure of deterrence reflects a convergence of three structural factors. First, Iran's decision to cross the nuclear threshold — announcing enrichment to 90% purity and accumulating sufficient HEU for a weapons device — eliminated the de-escalatory off-ramp that prior enrichment limits had preserved. The Trump administration had been explicit that a nuclear-capable Iran was an existential red line. Second, the January 2026 massacre destroyed whatever residual domestic legitimacy the clerical regime retained and hardened international support for military action. Third, the collapse of Geneva talks on February 26 removed the last diplomatic alternative; with both parties having publicly staked out maximalist positions, the credibility of US threats required action.
+      </p>
+      <p>
+        The implicit regime change framing of Operation Epic Fury — Trump's direct appeals to Iranians to "take over your government," timed with strikes on IRGC command infrastructure rather than nuclear sites alone — signals that the administration has concluded that a nuclear deal with the Islamic Republic is structurally impossible and that regime transformation is the only durable solution. This assessment fundamentally shapes the trajectory of operations: unlike the 12-Day War in June 2025, which was circumscribed and targeted, the current campaign may be designed to be open-ended.
+      </p>
+    </div>
+  </div>
+
+</section>
+
+<!-- ==================== TAB 3: FORCES & CAPABILITIES ==================== -->
+<section class="tab-panel" id="tab-2">
+
+  <div class="pdb-block" style="margin-bottom: var(--sp-6);">
+<div class="pdb-title">Order of Battle Assessment — 28 February 2026</div>
+    <div class="pdb-body">
+      <p>
+        The combined US-Israeli force posture represents the most capable strike package assembled in the Middle East theater since Operation Iraqi Freedom. Two carrier strike groups provide sustained sortie generation capacity of 190+ aircraft over extended operations. The combination of B-2 stealth bombers with GBU-57 MOPs, land-attack Tomahawk volleys, and F-35/F-22 penetrating strike capacity provides redundant ability to hold any Iranian target — including deep underground facilities — at risk. Iran's military force, while substantial in missile inventory, faces overwhelming asymmetric disadvantage in air power, ISR, and electronic warfare.
+      </p>
+    </div>
+  </div>
+
+  <!-- Forces Comparison -->
+  <div class="section-label">Section A — Force Comparison</div>
+  <div class="forces-compare mb-6">
+
+    <!-- US / ISRAEL -->
+    <div class="force-panel">
+      <div class="force-header us">
+        <div>
+          <div class="force-name">US / ISRAEL COALITION</div>
+          <div class="force-subtitle">Operation Epic Fury + Operation Lion's Roar</div>
+        </div>
+      </div>
+      <table class="force-table">
+        <thead>
+          <tr><th>Asset</th><th>Capability / Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="asset-tag asset-naval">NAVAL</span><br>USS Abraham Lincoln CSG</td>
+            <td>Nimitz-class carrier. ~90 aircraft. CVW-9. 5 escort ships. Tomahawk TLAM capacity. Arrived Arabian Sea 26 Jan 2026.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-naval">NAVAL</span><br>USS Gerald R. Ford CSG</td>
+            <td>Ford-class, 100,000 tons — world's largest warship. CVW-8. 80+ strike aircraft. Advanced EMALS catapult. 6 escort ships.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-naval">NAVAL</span><br>7+ Arleigh Burke Destroyers</td>
+            <td>96-cell VLS each. Combined TLAM inventory: 500+ Tomahawks. SPY-6 radar on newer hulls. Aegis BMD capability.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-air">AIR</span><br>F-22 Raptors (Israel)</td>
+            <td>Advanced stealth air superiority and strike. No confirmed public deployment numbers; RUMINT suggests 12–18 aircraft. Unmatched suppression of IADS.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-air">AIR</span><br>F-35A/B/I Fleet (60+)</td>
+            <td>US F-35As at Muwaffaq Salti AB, Jordan. Israeli F-35I Adirs (Nevatim AB). Low-observable strike + ISR fusion. 60+ confirmed airframes in theater.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-air">AIR</span><br>B-2 Spirit Stealth Bombers</td>
+            <td>Whiteman AFB + Diego Garcia staging. GBU-57A/B MOP (30,000 lb) — only weapon capable of defeating Fordow-depth hardened facilities. Proven capability (June 2025).</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-isr">ISR</span><br>6× E-3 AWACS</td>
+            <td>Deployed to Saudi Arabia. Provides persistent 360° battlespace awareness over Iran. Integrated with JSTARS and RQ-4 Global Hawk feeds.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-air">AIR</span><br>85+ Tanker Aircraft</td>
+            <td>KC-135/KC-46 fleet enables unrefueled range extension across the theater. Critical enabler for sustained operations and stealth penetrations.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-isr">SPACE/CYBER</span><br>Intelligence Infrastructure</td>
+            <td>NSA/Cyber Command electronic warfare. NRO satellite constellation for BDA. Israel's Unit 8200 for signal intercepts. Real-time targeting updates.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- IRAN -->
+    <div class="force-panel">
+      <div class="force-header iran">
+        <div>
+          <div class="force-name">ISLAMIC REPUBLIC OF IRAN</div>
+          <div class="force-subtitle">IRGC + Artesh + Basij + Proxy Network</div>
+        </div>
+      </div>
+      <table class="force-table">
+        <thead>
+          <tr><th>Asset</th><th>Capability / Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="asset-tag asset-missile">MISSILE</span><br>Shahab-3 / Ghadr</td>
+            <td>2,000 km range. Liquid-fueled. ~100+ operational. Can reach Israel and all Gulf bases. CEP 100–300m (unguided). Large stockpile.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-missile">MISSILE</span><br>Kheibar / Khorramshahr-4</td>
+            <td>3,000 km range. MaRV terminal guidance (30m CEP). 1,500 kg warhead. Can reach SE Europe. Most accurate liquid-fueled MRBM in inventory.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-missile">HYPERSONIC</span><br>Fattah-1</td>
+            <td>Claimed Mach 13–15 hypersonic glide vehicle. ~1,400 km range. Publicly tested 2023. Whether HGV or MIRV remains disputed. Most advanced asset.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-missile">MISSILE</span><br>Sejjil (2-stage solid fuel)</td>
+            <td>2,400 km range. Solid-fuel = faster launch, 3-5 min prep vs 45+ min for Shahab. Hardened silos. ~50 estimated deployed. Harder to target on ground.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-missile">CRUISE</span><br>Paveh / Hoveizeh</td>
+            <td>Paveh: 1,650 km terrain-following cruise missile. Hoveizeh: 1,350 km. Extremely low RCS; challenging for Patriot/THAAD. Primary Houthi-transfer platform.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-naval">NAVAL (IRGC)</span><br>Fast Attack Swarm</td>
+            <td>Hundreds of FACMs (fast attack craft with missiles). Anti-ship mines. Anti-ship ballistic missiles (ASBMs). Primary Hormuz threat. Shallow-water advantage neutralizes US CVBG advantage.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-isr">AIR DEFENSE</span><br>S-300PMU-2 / Bavar-373</td>
+            <td>S-300: Russian-supplied, ~40 km intercept range, 4 batteries. Bavar-373: domestic clone, claimed 200+ km range. Khordad-15: 150 km vs stealth. Degraded by prior Israeli strikes.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-air">AIR FORCE</span><br>Artesh Air Force</td>
+            <td>"Flying museum" — F-14 Tomcats, F-4 Phantoms, MiG-29s from pre-1979 + Soviet era. Limited sortie generation. Negligible threat to US stealth. Primarily used for defensive patrols.</td>
+          </tr>
+          <tr>
+            <td><span class="asset-tag asset-missile">UAV</span><br>Shahed-136 / 149 Fleet</td>
+            <td>1,000+ Shaheds operational. Inexpensive ($20K/unit), saturating. Shahed-136 already demonstrated against Saudi Aramco 2019. Shahed-149 MALE recon/strike. Primary weapon for prolonged campaigns.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Proxy Status -->
+  <div class="section-label">Section B — Proxy Network Status</div>
+  <div class="proxy-grid mb-6">
+    <div class="proxy-card threat-high">
+      <div class="proxy-name">Houthis (Ansar Allah)</div>
+      <div class="proxy-region">Yemen · Red Sea / Indian Ocean</div>
+      <div class="proxy-threat">
+        <div>
+          <div class="threat-label" style="color:#dc2626;">Threat Level: HIGH</div>
+          <div class="threat-bar"><div class="threat-bar-fill" style="width:85%; background:#dc2626;"></div></div>
+        </div>
+      </div>
+      <div class="proxy-notes">Fully operational. Battle-hardened by 18-month Red Sea campaign. Demonstrated capability to strike Israel with Asef and Quds cruise missiles. Large Shahed inventory. Have already declared "full operational readiness" against US targets. Anti-ship ballistic missiles threaten CVBGs.</div>
+    </div>
+
+    <div class="proxy-card threat-medium">
+      <div class="proxy-name">Iraqi Shia Militias (PMF)</div>
+      <div class="proxy-region">Iraq · US Bases / Israel</div>
+      <div class="proxy-threat">
+        <div>
+          <div class="threat-label" style="color:#d97706;">Threat Level: ELEVATED</div>
+          <div class="threat-bar"><div class="threat-bar-fill" style="width:65%; background:#d97706;"></div></div>
+        </div>
+      </div>
+      <div class="proxy-notes">Hashd al-Shaabi factions (Kata'ib Hezbollah, Asa'ib Ahl al-Haq) placing weapons on high alert near Ain al-Asad and other US installations. OSINT confirms equipment repositioning. Primary threat: rockets/drones against US personnel. Have conducted 150+ such attacks 2023–2024.</div>
+    </div>
+
+    <div class="proxy-card threat-low">
+      <div class="proxy-name">Hezbollah</div>
+      <div class="proxy-region">Lebanon · Northern Israel</div>
+      <div class="proxy-threat">
+        <div>
+          <div class="threat-label" style="color:#d97706;">Threat Level: DEGRADED</div>
+          <div class="threat-bar"><div class="threat-bar-fill" style="width:40%; background:#d97706;"></div></div>
+        </div>
+      </div>
+      <div class="proxy-notes">Severely degraded by 2024–2025 conflict. Nasrallah killed; successor leadership inexperienced. Rocket inventory at ~20% of pre-war levels. Southern Lebanon under IDF occupation. Re-entry into war would risk total organizational destruction. Unlikely to open second front absent direct threat to Iran's survival.</div>
+    </div>
+
+    <div class="proxy-card threat-minimal">
+      <div class="proxy-name">Hamas</div>
+      <div class="proxy-region">Gaza · West Bank</div>
+      <div class="proxy-threat">
+        <div>
+          <div class="threat-label" style="color:#a8a29e;">Threat Level: MINIMAL</div>
+          <div class="threat-bar"><div class="threat-bar-fill" style="width:15%; background:#a8a29e;"></div></div>
+        </div>
+      </div>
+      <div class="proxy-notes">Formally dissolved military-political structure under October 2025 ceasefire. Remaining fighters dispersed. Gaza under reconstruction governance. No meaningful capacity to conduct coordinated operations. Effectively neutralized as Iranian strategic asset.</div>
+    </div>
+  </div>
+
+  <!-- Force comparison viz -->
+  <div class="section-label">Section C — Comparative Strength Assessment</div>
+  <div class="card mb-6">
+    <div class="section-title mb-4">Asymmetric Force Balance: Key Dimensions</div>
+    <div style="overflow-x:auto;">
+      <table style="min-width:560px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden;">
+        <thead>
+          <tr>
+            <th style="background: var(--bg-raised); padding: var(--sp-3) var(--sp-4); font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-strong); text-align: left;">Dimension</th>
+            <th style="background: #1e3a5f; padding: var(--sp-3) var(--sp-4); font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.7); border-bottom: 1px solid var(--border-strong); text-align: center;">US / Israel</th>
+            <th style="background: #3f1515; padding: var(--sp-3) var(--sp-4); font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.7); border-bottom: 1px solid var(--border-strong); text-align: center;">Iran</th>
+            <th style="background: var(--bg-raised); padding: var(--sp-3) var(--sp-4); font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-strong); text-align: center;">Edge</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: var(--sp-3) var(--sp-4); font-weight: 600; border-bottom: 1px solid var(--border);">Air Superiority</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);">████████████ 10/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border); color: var(--text-muted);">██ 2/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);"><span class="badge badge-blue">Coalition ▲▲▲</span></td>
+          </tr>
+          <tr>
+            <td style="padding: var(--sp-3) var(--sp-4); font-weight: 600; border-bottom: 1px solid var(--border);">Ballistic Missiles</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);">████████ 8/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);">████████████ 10/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);"><span class="badge badge-red">Iran ▲</span></td>
+          </tr>
+          <tr>
+            <td style="padding: var(--sp-3) var(--sp-4); font-weight: 600; border-bottom: 1px solid var(--border);">Naval Power</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);">████████████ 10/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);">████ 4/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);"><span class="badge badge-blue">Coalition ▲▲▲</span></td>
+          </tr>
+          <tr>
+            <td style="padding: var(--sp-3) var(--sp-4); font-weight: 600; border-bottom: 1px solid var(--border);">Hormuz Denial</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);">████ 4/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);">██████████ 9/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);"><span class="badge badge-red">Iran ▲▲</span></td>
+          </tr>
+          <tr>
+            <td style="padding: var(--sp-3) var(--sp-4); font-weight: 600; border-bottom: 1px solid var(--border);">ISR / C2</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);">████████████ 10/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);">████ 4/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);"><span class="badge badge-blue">Coalition ▲▲▲</span></td>
+          </tr>
+          <tr>
+            <td style="padding: var(--sp-3) var(--sp-4); font-weight: 600; border-bottom: 1px solid var(--border);">Proxy Network</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);">██ 2/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);">████████ 8/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);"><span class="badge badge-red">Iran ▲▲</span></td>
+          </tr>
+          <tr>
+            <td style="padding: var(--sp-3) var(--sp-4); font-weight: 600; border-bottom: 1px solid var(--border);">Stealth Penetration</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);">████████████ 10/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border); color: var(--text-muted);">░ 0/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center; border-bottom: 1px solid var(--border);"><span class="badge badge-blue">Coalition ▲▲▲</span></td>
+          </tr>
+          <tr>
+            <td style="padding: var(--sp-3) var(--sp-4); font-weight: 600;">Strategic Depth</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center;">████ 4/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center;">██████████ 9/10</td>
+            <td style="padding: var(--sp-3) var(--sp-4); text-align: center;"><span class="badge badge-red">Iran ▲▲</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</section>
+
+<!-- ==================== TAB 4: SCENARIOS & WHAT TO WATCH ==================== -->
+<section class="tab-panel" id="tab-3">
+
+  <div class="pdb-block mb-6">
+<div class="pdb-title">Strategic Scenarios: Cone of Plausibility — 28 Feb – Apr 2026</div>
+    <div class="pdb-body">
+      <p>
+        The scenarios below represent the analytical team's best assessment of conflict trajectories as of Day 1 of operations. The Trump administration's operational framing — "major combat operations" lasting "several days," with explicit messaging to the Iranian population about regime change — suggests an intent to sustain and expand operations beyond a single strike package. The previous weak scenario analysis understated the probability of a sustained degradation campaign; this framework corrects that error and updates for the clear regime-change signaling now observable in Trump's public statements.
+      </p>
+    </div>
+  </div>
+
+  <!-- Probability bar -->
+  <div class="section-label">Cone of Plausibility — Probability Allocation</div>
+  <div class="card mb-4">
+    <div style="margin-bottom: var(--sp-2);" class="flex items-center gap-3 flex-wrap">
+      <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:0.7rem;"><span style="width:12px;height:12px;border-radius:2px;background:#2563eb;display:inline-block;"></span>S1: Sustained Degradation 60%</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:0.7rem;"><span style="width:12px;height:12px;border-radius:2px;background:#dc2626;display:inline-block;"></span>S2: Regime Change 25%</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:0.7rem;"><span style="width:12px;height:12px;border-radius:2px;background:#7c3aed;display:inline-block;"></span>S3: Nuclear Crisis 10%</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:0.7rem;"><span style="width:12px;height:12px;border-radius:2px;background:#d97706;display:inline-block;"></span>S4: Conflagration 5%</span>
+    </div>
+    <div class="probability-bar-row">
+      <div class="prob-segment" style="width:60%; background:#2563eb;" title="S1: 60%"></div>
+      <div class="prob-segment" style="width:25%; background:#dc2626;" title="S2: 25%"></div>
+      <div class="prob-segment" style="width:10%; background:#7c3aed;" title="S3: 10%"></div>
+      <div class="prob-segment" style="width:5%; background:#d97706;" title="S4: 5%"></div>
+    </div>
+  </div>
+
+  <!-- Scenarios -->
+  <div class="scenarios-list mb-6">
+
+    <!-- Scenario 1 -->
+    <div class="scenario-item" style="--card-accent:#2563eb;">
+      <div class="scenario-header" onclick="toggleScenario(this)">
+        <div class="scenario-prob-bar">
+          <div class="scenario-prob-num" style="color:#2563eb;" class="data-num">60%</div>
+          <div class="scenario-prob-label">Probable</div>
+        </div>
+        <div class="scenario-info">
+          <div class="scenario-name">Scenario 1 — Sustained Degradation Campaign</div>
+          <div class="scenario-tagline">Trump's declared objective: destroy missile infrastructure, IRGC command, nuclear sites. New coercive ceasefire in 1–2 weeks.</div>
+        </div>
+        <div class="badge badge-blue">▾ EXPAND</div>
+      </div>
+      <div class="scenario-body collapsed">
+        <div class="scenario-col">
+          <div class="scenario-col-title">Dynamics</div>
+          <ul>
+            <li>Trump announces "major combat operations" explicitly scoped to "several days" — implies a bounded but intensive campaign</li>
+            <li>US/Israel conduct 3–5 strike waves targeting Shahab/Sejjil production, IRGC command nodes, Isfahan tunnels, IRGC Navy assets</li>
+            <li>Iran retaliates with ballistic missiles on Israel and Gulf bases; Houthis and Iraqi militias activate</li>
+            <li>Gulf Arab states (Saudi, UAE) signal disapproval but provide logistical support to US operations</li>
+            <li>Diplomacy: Oman back-channel activates; China applies pressure on Tehran; UN SC emergency session achieves nothing</li>
+            <li>Oil spikes to $85–95/bbl on Hormuz fears, then stabilizes as closure avoided</li>
+          </ul>
+        </div>
+        <div class="scenario-col">
+          <div class="scenario-col-title">Outcome & Key Indicators</div>
+          <ul>
+            <li>Ends: New ceasefire within 7–14 days — more coercive than June 2025 terms</li>
+            <li>Iran's missile manufacturing capability degraded 40–70%</li>
+            <li>IRGC Quds Force and Navy operationally disrupted</li>
+            <li>Nuclear program: Isfahan damage unknown; enrichment suspended under duress</li>
+            <li>Regime survives but significantly weakened domestically</li>
+          </ul>
+          <div class="scenario-indicator">
+            <div class="indicator-label" style="color: var(--amber-text);">▶ KEY INDICATOR</div>
+            Watch whether strikes expand to economic targets (ports, refineries, power grid). If yes, escalation toward S2. If confined to military/missile sites, S1 confirmed.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scenario 2 -->
+    <div class="scenario-item">
+      <div class="scenario-header" onclick="toggleScenario(this)">
+        <div class="scenario-prob-bar">
+          <div class="scenario-prob-num" style="color:#dc2626;" class="data-num">25%</div>
+          <div class="scenario-prob-label">Plausible</div>
+        </div>
+        <div class="scenario-info">
+          <div class="scenario-name">Scenario 2 — Regime Change Escalation</div>
+          <div class="scenario-tagline">Sustained air campaign targets IRGC economic assets. Psychological operations. Potential regime fracture under combined pressure.</div>
+        </div>
+        <div class="badge badge-red">▾ EXPAND</div>
+      </div>
+      <div class="scenario-body collapsed">
+        <div class="scenario-col">
+          <div class="scenario-col-title">Dynamics</div>
+          <ul>
+            <li>Trump language — "your hour of freedom is at hand" + "take over your government" — is not rhetoric; it is operational messaging</li>
+            <li>Campaign expands Phase 2 to IRGC economic assets: Kish free trade zone, IRGC-controlled banks, ports, refineries</li>
+            <li>Information operations blast Farsi-language content across satellite and internet-bypass channels to Iranian population</li>
+            <li>IRGC internal splits: some commanders seek survival accommodation; hardliners double down on Khamenei</li>
+            <li>Iran attempts Hormuz closure — triggers oil to $120+; tanker insurance suspended globally</li>
+            <li>US CVBG vulnerability increases as IRGC Navy mines narrows; mine-sweeping operations required</li>
+            <li>Scenario unfolds over 3–6 weeks; outcome uncertain by definition</li>
+          </ul>
+        </div>
+        <div class="scenario-col">
+          <div class="scenario-col-title">Outcome & Key Indicators</div>
+          <ul>
+            <li>Best case (regime fracture): IRGC mid-tier commanders collaborate with civilian opposition; Khamenei power vacuum; negotiated transition</li>
+            <li>Worst case: IRGC consolidates under existential threat logic; Hormuz mined; Iran activates nuclear deterrent option</li>
+            <li>Oil: $110–130/bbl sustained; global recession risk elevated</li>
+            <li>US basing pressure: Congressional opposition grows as US casualties mount from Iraqi militia and Houthi attacks</li>
+          </ul>
+          <div class="scenario-indicator">
+            <div class="indicator-label" style="color: var(--red-text);">▶ KEY INDICATOR</div>
+            US strikes on economic infrastructure (refineries, port facilities, IRGC-controlled financial entities). Trump explicitly calling for regime change rather than missile destruction. Iranian population demonstrations growing despite IRGC suppression.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scenario 3 -->
+    <div class="scenario-item">
+      <div class="scenario-header" onclick="toggleScenario(this)">
+        <div class="scenario-prob-bar">
+          <div class="scenario-prob-num" style="color:#7c3aed;" class="data-num">10%</div>
+          <div class="scenario-prob-label">Plausible</div>
+        </div>
+        <div class="scenario-info">
+          <div class="scenario-name">Scenario 3 — Nuclear Breakout Crisis</div>
+          <div class="scenario-tagline">Under bombardment cover, Iran accelerates weaponization of 440 kg HEU stockpile. IAEA loses access. Intelligence community loses track.</div>
+        </div>
+        <div class="badge badge-purple">▾ EXPAND</div>
+      </div>
+      <div class="scenario-body collapsed">
+        <div class="scenario-col">
+          <div class="scenario-col-title">Dynamics</div>
+          <ul>
+            <li>Iran's 440 kg HEU stockpile (at ~84% enrichment, sufficient for ~9 weapons if enriched to 90%) located primarily at Isfahan tunnels</li>
+            <li>Under cover of bombardment chaos and IAEA comms blackout, IRGC aerospace accelerates weaponization work</li>
+            <li>Implosion lens assembly, neutron initiator integration — work that can be done in weeks if scientists are in place</li>
+            <li>Intelligence community may lose track of key personnel and activities during conflict disruption</li>
+            <li>Scenario triggers existential logic: a tested Iranian nuclear device ends the bombing campaign and creates a new deterrence baseline</li>
+            <li>Israel response if device approached: may attempt to destroy Isfahan stockpile with MOPs despite risk of radiological contamination</li>
+          </ul>
+        </div>
+        <div class="scenario-col">
+          <div class="scenario-col-title">Outcome & Key Indicators</div>
+          <ul>
+            <li>If device tested: immediate global crisis. Iranian deterrent achieved. US campaign halted. North Korea/Pakistan analogue — de facto nuclear state</li>
+            <li>If detected in progress: existential escalation decision for US/Israel — strike Isfahan with risk of radiological dispersal, or accept nuclear Iran</li>
+            <li>This is the most consequential low-probability scenario in the cone</li>
+          </ul>
+          <div class="scenario-indicator">
+            <div class="indicator-label" style="color: var(--red-text);">▶ KEY INDICATORS (CRITICAL)</div>
+            IAEA official statements about access denial. Intelligence community leaks about Isfahan or Parchin activity. Seismic data from known Iranian test sites. Movement of nuclear scientists to hardened locations.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scenario 4 -->
+    <div class="scenario-item">
+      <div class="scenario-header" onclick="toggleScenario(this)">
+        <div class="scenario-prob-bar">
+          <div class="scenario-prob-num" style="color:#d97706;" class="data-num">5%</div>
+          <div class="scenario-prob-label">Wildcard</div>
+        </div>
+        <div class="scenario-info">
+          <div class="scenario-name">Scenario 4 — Regional Conflagration</div>
+          <div class="scenario-tagline">Iran strikes Saudi Aramco / UAE infrastructure. Hezbollah re-enters. Multiple simultaneous fronts overwhelm force posture.</div>
+        </div>
+        <div class="badge badge-amber">▾ EXPAND</div>
+      </div>
+      <div class="scenario-body collapsed">
+        <div class="scenario-col">
+          <div class="scenario-col-title">Dynamics</div>
+          <ul>
+            <li>Iran, facing regime survival threat, expands to existential deterrence: strikes Saudi Aramco Abqaiq / Ras Tanura (15% of global oil supply)</li>
+            <li>UAE: Fujairah port — 1/4 of global oil shipments — targeted</li>
+            <li>Hezbollah re-enters despite degraded state, assessing that Iran's survival requires it</li>
+            <li>Iraqi militias conduct mass simultaneous attacks on all US installations across Iraq/Syria/Jordan</li>
+            <li>US force posture unable to sustain offensive operations while defending on 4+ fronts</li>
+            <li>Saudi Arabia, Jordan consider own military responses; risk of broader Arab-state fracture</li>
+          </ul>
+        </div>
+        <div class="scenario-col">
+          <div class="scenario-col-title">Outcome & Key Indicators</div>
+          <ul>
+            <li>Oil: $150–300/bbl range (2 scenarios above $200)</li>
+            <li>Global recession trigger: oil at these levels for 60+ days = -3 to -5% global GDP</li>
+            <li>US Congress: emergency session; War Powers debates; sustained authorization questionable</li>
+            <li>China intervention: economic and diplomatic leverage on Tehran — possibly the only de-escalation pathway</li>
+          </ul>
+          <div class="scenario-indicator">
+            <div class="indicator-label" style="color: var(--red-text);">▶ KEY INDICATORS (EXISTENTIAL)</div>
+            Any attack on Saudi Aramco or UAE energy infrastructure. Hezbollah mobilization of remaining rocket inventory. Simultaneous attacks across 3+ US bases in single 24-hour window.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Polymarket Odds — Trend Lines -->
+  <div class="section-label">Prediction Market Odds — Probability Trends</div>
+  <div class="pm-trends-grid" id="pmTrendsGrid">
+    <!-- Dynamically populated by JS -->
+    <div class="loading-state" style="grid-column: 1 / -1; padding: var(--sp-8); text-align: center;">
+      <div class="text-xs text-muted font-mono">LOADING POLYMARKET DATA...</div>
+    </div>
+  </div>
+
+  <!-- What to Watch -->
+  <div class="section-label">What to Watch — Analyst Monitoring List</div>
+  <div class="card mb-4">
+    <div class="section-title mb-4">Critical Indicators &amp; Tripwires — Next 72 Hours</div>
+    <div class="watch-list">
+      <div class="watch-item">
+        <div class="watch-dot red"></div>
+        <div class="watch-text"><strong>Iran ballistic missile launches on Israel.</strong> Any Kheibar or Sejjil launch on Israeli territory triggers Iron Dome/Arrow-3 saturation risk. Israeli retaliation likely disproportionate. Directly threatens escalation out of S1 into S2/S4.</div>
+      </div>
+      <div class="watch-item">
+        <div class="watch-dot red"></div>
+        <div class="watch-text"><strong>Hormuz mining activity.</strong> IRGC Navy repositioning in Hormuz narrows consistent with pre-mining (already observed). Actual mine laying or announced closure immediately sends oil to $100+. US MCM (mine countermeasure) operations take weeks to clear.</div>
+      </div>
+      <div class="watch-item">
+        <div class="watch-dot red"></div>
+        <div class="watch-text"><strong>IAEA access denial / Isfahan communications blackout.</strong> Any official statement from IAEA about losing access to inspectors or HEU stockpile locations triggers S3 probability upgrade. Most urgent low-probability indicator.</div>
+      </div>
+      <div class="watch-item">
+        <div class="watch-dot red"></div>
+        <div class="watch-text"><strong>US casualties from retaliatory strikes.</strong> Iranian missiles hitting US bases in Bahrain, Kuwait, UAE with mass casualties (10+ US KIA) creates domestic political constraint on operations. Congressional War Powers debate activated. Would also likely trigger US escalation to economic infrastructure targets.</div>
+      </div>
+      <div class="watch-item">
+        <div class="watch-dot amber"></div>
+        <div class="watch-text"><strong>Iraqi militia mass rocket/drone attacks on US forces.</strong> Kata'ib Hezbollah and Asa'ib Ahl al-Haq reportedly at high alert near Ain al-Asad. Sustained attacks could force redeployment of US air assets from Iran campaign to force protection, degrading sortie tempo.</div>
+      </div>
+      <div class="watch-item">
+        <div class="watch-dot amber"></div>
+        <div class="watch-text"><strong>Houthi anti-ship ballistic missile launches at US CVBGs.</strong> Houthis have demonstrated ASBM capability in 2024–2025. A successful hit on USS Lincoln or USS Ford would be the most significant US naval combat loss since WWII. Would trigger massive escalation.</div>
+      </div>
+      <div class="watch-item">
+        <div class="watch-dot amber"></div>
+        <div class="watch-text"><strong>Oil above $90/bbl (WTI).</strong> The $90 level is the political threshold at which sustained US operations face domestic economic headwinds. Gas prices at pump reach $4.50+ nationally. Political pressure on Trump to negotiate grows. Current price ~$67; $90 is achievable in 2–3 days of Hormuz disruption.</div>
+      </div>
+      <div class="watch-item">
+        <div class="watch-dot amber"></div>
+        <div class="watch-text"><strong>Strike expansion to economic targets (refineries, ports).</strong> If US/Israel begin striking Bandar Abbas port, Assaluyeh LNG complex, or Iranian oil infrastructure, scenario shifts from S1 to S2. Would signal regime change rather than military degradation as primary objective.</div>
+      </div>
+      <div class="watch-item">
+        <div class="watch-dot amber"></div>
+        <div class="watch-text"><strong>Iranian information operations / Khamenei statement.</strong> A Khamenei address threatening Gulf Arab states or calling for pan-Islamic mobilization signals regime hardening. Absence of Khamenei address for 48+ hours signals C2 disruption and potential leadership crisis.</div>
+      </div>
+      <div class="watch-item">
+        <div class="watch-dot green"></div>
+        <div class="watch-text"><strong>Oman back-channel activation.</strong> Oman has historically served as the primary US-Iran diplomatic back-channel (as in June 2025). Any reports of Omani foreign ministry contacts in Tehran signal ceasefire exploration. The most positive indicator available.</div>
+      </div>
+      <div class="watch-item">
+        <div class="watch-dot green"></div>
+        <div class="watch-text"><strong>Chinese diplomatic intervention.</strong> Xi Jinping holds significant leverage over Iran — China purchases ~90% of Iranian oil exports. A Chinese ultimatum linking continued oil purchases to Iranian restraint would be decisive. Watch for Chinese foreign ministry statements and Beijing-Tehran hotline activity.</div>
+      </div>
+      <div class="watch-item">
+        <div class="watch-dot green"></div>
+        <div class="watch-text"><strong>UN Security Council ceasefire resolution.</strong> Unlikely to pass (US veto), but UNSC debate serves as a multilateral signaling mechanism. If China/Russia draft a resolution with terms Iran publicly endorses, this signals Iranian interest in off-ramp.</div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ==================== TAB 5: ECONOMIC IMPACT ==================== -->
+<section class="tab-panel" id="tab-4">
+
+  <div class="pdb-block mb-6">
+<div class="pdb-title">Economic Intelligence Brief: Oil Markets &amp; Financial Contagion Risk</div>
+    <div class="pdb-body">
+      <p>
+        The primary economic risk from the current conflict is a supply shock transmitted through the Strait of Hormuz. At 20 million barrels per day — approximately 20% of global petroleum — the Strait represents the single most concentrated chokepoint in global energy infrastructure. The bypass capacity via the Saudi East-West pipeline and UAE Habshan-Fujairah pipeline totals only 2.6 mb/d, providing minimal offset in a full-closure scenario. Oil markets have not yet priced a sustained closure: at $67 WTI (Day 1), the conflict risk premium is modest, implying markets currently assign low probability to Hormuz closure.
+      </p>
+    </div>
+  </div>
+
+  <!-- Market Indicators -->
+  <div class="section-label">Live Market Indicators (Day 1 — 28 Feb 2026)</div>
+  <div class="market-indicator-row mb-6">
+    <div class="mkt-card">
+      <div class="mkt-card-name">WTI Crude</div>
+      <div class="mkt-card-price data-num">$67.40</div>
+      <div class="mkt-card-change change-up data-num">▲ +8.2% (7-month high)</div>
+    </div>
+    <div class="mkt-card">
+      <div class="mkt-card-name">Brent Crude</div>
+      <div class="mkt-card-price data-num">$73.15</div>
+      <div class="mkt-card-change change-up data-num">▲ +7.9%</div>
+    </div>
+    <div class="mkt-card">
+      <div class="mkt-card-name">Gold (XAU/USD)</div>
+      <div class="mkt-card-price data-num">$5,296</div>
+      <div class="mkt-card-change change-up data-num">▲ +2.1% (safe haven)</div>
+    </div>
+    <div class="mkt-card">
+      <div class="mkt-card-name">Bitcoin</div>
+      <div class="mkt-card-price data-num">$63,000</div>
+      <div class="mkt-card-change change-down data-num">▼ −6.0% (risk-off)</div>
+    </div>
+    <div class="mkt-card">
+      <div class="mkt-card-name">LMT (Lockheed)</div>
+      <div class="mkt-card-price data-num">+4.8%</div>
+      <div class="mkt-card-change change-up data-num">▲ Defense sector rally</div>
+    </div>
+    <div class="mkt-card">
+      <div class="mkt-card-name">VIX (Fear Index)</div>
+      <div class="mkt-card-price data-num">28.4</div>
+      <div class="mkt-card-change change-up data-num">▲ +9.3 pts (elevated)</div>
+    </div>
+    <div class="mkt-card">
+      <div class="mkt-card-name">US 10Y Yield</div>
+      <div class="mkt-card-price data-num">4.31%</div>
+      <div class="mkt-card-change change-down data-num">▼ −12 bps (flight to safety)</div>
+    </div>
+    <div class="mkt-card">
+      <div class="mkt-card-name">S&amp;P 500</div>
+      <div class="mkt-card-price data-num">−1.8%</div>
+      <div class="mkt-card-change change-down data-num">▼ Risk-off selloff</div>
+    </div>
+  </div>
+
+  <!-- Hormuz Data -->
+  <div class="section-label">Strait of Hormuz — Critical Data</div>
+  <div class="hormuz-stats mb-6">
+    <div class="hormuz-stat">
+      <div class="hormuz-num data-num" style="color:#dc2626;">20 Mb/d</div>
+      <div class="hormuz-label">Daily Flow Through Hormuz</div>
+    </div>
+    <div class="hormuz-stat">
+      <div class="hormuz-num data-num" style="color:#d97706;">~20%</div>
+      <div class="hormuz-label">Share of Global Petroleum</div>
+    </div>
+    <div class="hormuz-stat">
+      <div class="hormuz-num data-num" style="color:#7c3aed;">2.6 Mb/d</div>
+      <div class="hormuz-label">Bypass Pipeline Capacity</div>
+    </div>
+    <div class="hormuz-stat">
+      <div class="hormuz-num data-num" style="color:#2563eb;">84%</div>
+      <div class="hormuz-label">Hormuz Oil Destined for Asia</div>
+    </div>
+    <div class="hormuz-stat">
+      <div class="hormuz-num data-num" style="color:#16a34a;">34m</div>
+      <div class="hormuz-label">Narrowest Point (nautical miles)</div>
+    </div>
+    <div class="hormuz-stat">
+      <div class="hormuz-num data-num" style="color:#d97706;">~500</div>
+      <div class="hormuz-label">VLCC Tankers/Year Transiting</div>
+    </div>
+  </div>
+
+  <!-- Oil Scenarios Table -->
+  <div class="section-label">Oil Price Scenarios — Conflict Trajectories</div>
+  <table class="scenario-table mb-6">
+    <thead>
+      <tr>
+        <th>Scenario</th>
+        <th>Oil Price Range</th>
+        <th>Probability</th>
+        <th>Trigger Conditions</th>
+        <th>Duration</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-green">De-escalation / Deal</span></td>
+        <td><span class="price-range price-low data-num">$60–63</span></td>
+        <td><span class="data-num" style="color: var(--green-text);">10%</span></td>
+        <td>Rapid ceasefire within 72 hours; Oman deal; Hormuz unaffected</td>
+        <td>Days</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-blue">Limited Strike — Bounded</span></td>
+        <td><span class="price-range price-mid data-num">$75–80</span></td>
+        <td><span class="data-num" style="color: var(--amber-text);">35%</span></td>
+        <td>Operations conclude in 5–7 days; ceasefire holds; no Hormuz disruption</td>
+        <td>1–2 weeks</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-amber">Partial Hormuz Disruption</span></td>
+        <td><span class="price-range price-mid data-num">$80–95</span></td>
+        <td><span class="data-num" style="color: var(--amber-text);">30%</span></td>
+        <td>Iran mines outer Hormuz approaches; commercial shipping reroutes; 15–30% flow reduction</td>
+        <td>2–4 weeks</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-orange">Extended Shipping Harassment</span></td>
+        <td><span class="price-range price-high data-num">$90–110+</span></td>
+        <td><span class="data-num" style="color: var(--red-text);">17%</span></td>
+        <td>Sustained IRGC swarm attacks on VLCCs; tanker insurance suspended; VLCC rates spike 6× — already at 2020 levels</td>
+        <td>1–3 months</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-red">Gulf Infrastructure Strike</span></td>
+        <td><span class="price-range price-crisis data-num">$130–300+</span></td>
+        <td><span class="data-num" style="color: var(--purple-text);">8%</span></td>
+        <td>Iran strikes Abqaiq / Ras Tanura (Saudi) or Fujairah (UAE); 10–15% of global supply knocked offline</td>
+        <td>Months</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Historical Analogues Table -->
+  <div class="section-label">Historical Oil Spike Analogues</div>
+  <table class="scenario-table mb-6">
+    <thead>
+      <tr>
+        <th>Event</th>
+        <th>Year</th>
+        <th>Price Before</th>
+        <th>Price After</th>
+        <th>% Spike</th>
+        <th>Duration</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Arab Oil Embargo (OAPEC)</td>
+        <td class="data-num">1973</td>
+        <td class="data-num">$3</td>
+        <td class="data-num">$12</td>
+        <td class="data-num price-crisis">+300%</td>
+        <td>6 months</td>
+      </tr>
+      <tr>
+        <td>Iranian Revolution</td>
+        <td class="data-num">1979</td>
+        <td class="data-num">$13</td>
+        <td class="data-num">$34</td>
+        <td class="data-num price-high">+162%</td>
+        <td>12 months</td>
+      </tr>
+      <tr>
+        <td>Gulf War (Iraq-Kuwait)</td>
+        <td class="data-num">1990</td>
+        <td class="data-num">$17</td>
+        <td class="data-num">$40</td>
+        <td class="data-num price-high">+135%</td>
+        <td>3 months</td>
+      </tr>
+      <tr>
+        <td>Iraq War (Operation Iraqi Freedom)</td>
+        <td class="data-num">2003</td>
+        <td class="data-num">$25</td>
+        <td class="data-num">$35</td>
+        <td class="data-num price-mid">+40%</td>
+        <td>1 month</td>
+      </tr>
+      <tr>
+        <td>Abqaiq / Khurais Attack (Iranian proxy)</td>
+        <td class="data-num">2019</td>
+        <td class="data-num">$60</td>
+        <td class="data-num">$71</td>
+        <td class="data-num price-mid">+18%</td>
+        <td>1 week</td>
+      </tr>
+      <tr>
+        <td>Russia-Ukraine War</td>
+        <td class="data-num">2022</td>
+        <td class="data-num">$79</td>
+        <td class="data-num">$130</td>
+        <td class="data-num price-high">+65%</td>
+        <td>3 months</td>
+      </tr>
+      <tr>
+        <td><strong>Iran-US/Israel War — Current</strong></td>
+        <td class="data-num">2026</td>
+        <td class="data-num">$62</td>
+        <td class="data-num" style="color: var(--amber-text);">$67–$300+</td>
+        <td class="data-num" style="color: var(--amber-text);">TBD</td>
+        <td>Unknown</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Trade Ideas -->
+  <div class="section-label">Trade Ideas — Geopolitical Risk Framework</div>
+  <div class="trade-ideas">
+
+    <div class="trade-card">
+      <div class="trade-direction">
+        <div class="trade-dir-label dir-long">LONG</div>
+        <div class="trade-tickers">USO · BNO<br>UCO · CL</div>
+      </div>
+      <div class="trade-body">
+        <div class="trade-title">Long Oil — Geopolitical Risk Premium Underpriced</div>
+        <div class="trade-rationale">At $67 WTI, oil has spiked 8% on Day 1 but remains well below any serious Hormuz disruption scenario. The risk premium currently priced in is consistent with a bounded, 1-week conflict with no supply disruption. Any escalation toward Hormuz harassment — now showing early IRGC Navy repositioning signals — is not yet in the price. The risk/reward on WTI calls above $80 or leveraged oil ETFs (UCO) is asymmetric: upside to $130+ in tail scenarios, downside to $62 in rapid ceasefire scenario. Position sizing: 2–5% of portfolio, sized for volatility.</div>
+        <div class="conv-risk">⚠ Rapid Oman-brokered ceasefire = give-back risk</div>
+      </div>
+    </div>
+
+    <div class="trade-card">
+      <div class="trade-direction">
+        <div class="trade-dir-label dir-long">LONG</div>
+        <div class="trade-tickers">GLD · SLV<br>GC · SI</div>
+      </div>
+      <div class="trade-body">
+        <div class="trade-title">Long Gold &amp; Silver — Safe Haven + Inflation Hedge</div>
+        <div class="trade-rationale">Gold at $5,296 is already in secular bull territory driven by de-dollarization and central bank accumulation, but the geopolitical premium from a sustained Iran conflict adds meaningful incremental demand. Gold traditionally moves $100–200 in the first weeks of a major Middle East conflict. If the conflict expands to oil infrastructure scenarios, gold acts simultaneously as a safe haven and inflation hedge. Silver provides higher beta to oil (industrial demand correlation) and is historically undervalued vs gold at current ratios. Both are liquid, exchange-traded, and provide direct portfolio protection.</div>
+        <div class="conv-risk">⚠ Dollar strength in safe-haven flight caps upside</div>
+      </div>
+    </div>
+
+    <div class="trade-card">
+      <div class="trade-direction">
+        <div class="trade-dir-label dir-long">LONG</div>
+        <div class="trade-tickers">LMT · RTX<br>NOC · GD<br>LDOS · CACI</div>
+      </div>
+      <div class="trade-body">
+        <div class="trade-title">Long Defense Stocks — Sustained Campaign = Sustained Orders</div>
+        <div class="trade-rationale">The Tomahawk and JASSM inventory burn in a multi-wave campaign is substantial: each Arleigh Burke destroyer expends $1–2M per Tomahawk, and restocking timelines of 12–18 months create sustained order books. Lockheed Martin (LMT: F-35 operations + Hellfire + JASSM), Raytheon/RTX (Tomahawk, Patriot, AMRAAM), Northrop Grumman (B-2 maintenance, F-35 components), and General Dynamics (Abrams logistics, Gulfstream for ISR) all benefit. Key driver: emergency Congressional supplemental authorization, which historically provides 25–40% EPS upside over 24 months. These stocks have already rallied 4–6%; the current move likely understates sustained campaign economics.</div>
+        <div class="conv-risk">⚠ Quick ceasefire removes the catalyst; buy on dips</div>
+      </div>
+    </div>
+
+    <div class="trade-card">
+      <div class="trade-direction">
+        <div class="trade-dir-label dir-short">SHORT</div>
+        <div class="trade-tickers">DAL · UAL<br>AAL · RCL<br>NCLH</div>
+      </div>
+      <div class="trade-body">
+        <div class="trade-title">Short Airlines &amp; Cruise Lines — Fuel + Route Disruption</div>
+        <div class="trade-rationale">Airlines are double-hit: jet fuel costs spike with oil (fuel is typically 25–30% of operating costs), and Middle East route disruptions force costly reroutes (adding 2–4 hours and significant fuel burn to Asian routes via avoiding Iranian airspace). Cruise lines face potential Mediterranean and Red Sea deployment restrictions, directly hitting European and Asia-Pacific itinerary revenue. Delta, United, American, and Royal Caribbean/Norwegian all have meaningful Middle East and Asian route exposure. In the 2022 Ukraine war, European airlines saw fuel cost increases add $2–4B to full-year costs within 3 months. Position: outright short or put spreads with 30–60 day expiry.</div>
+        <div class="conv-risk">⚠ Airlines are already pricing some risk; check valuation before entry</div>
+      </div>
+    </div>
+
+    <div class="trade-card">
+      <div class="trade-direction">
+        <div class="trade-dir-label dir-long">LONG</div>
+        <div class="trade-tickers">FRO · NAT<br>TK · STNG<br>EURN</div>
+      </div>
+      <div class="trade-body">
+        <div class="trade-title">Long Tanker Stocks — VLCC Rates at Multi-Year Highs</div>
+        <div class="trade-rationale">Tanker economics are leveraged to the Hormuz scenario: as the strait becomes risky, voyage distances lengthen dramatically (oil from Gulf to Asia must route around southern Africa), absorbing more vessel-days and tightening supply. VLCC rates, already at elevated levels, could 5–10x in a partial disruption scenario — as occurred briefly in 2019 post-Abqaiq attack and during the 2024 Red Sea crisis. Frontline (FRO), Nordic American Tankers (NAT), Euronav (EURN), and Scorpio Tankers (STNG) provide direct exposure. Note: war risk insurance premiums spike simultaneously, partially offsetting revenue gains — check vessel insurance exposure per company.</div>
+        <div class="conv-risk">⚠ War risk insurance premiums reduce net margins; company-specific analysis required</div>
+      </div>
+    </div>
+
+    <div class="trade-card">
+      <div class="trade-direction">
+        <div class="trade-dir-label dir-long">LONG</div>
+        <div class="trade-tickers">CCJ · URG<br>NXE · UEC</div>
+      </div>
+      <div class="trade-body">
+        <div class="trade-title">Long Uranium Miners — Nuclear Concerns Escalation Hedge</div>
+        <div class="trade-rationale">This is a scenario-contingent trade, relevant primarily if Scenario 3 (Nuclear Breakout) begins to accumulate probability. Iran's 440 kg HEU stockpile and IAEA access denial creates headline risk that could trigger a rush into nuclear hedge assets. More fundamentally, any disruption to Persian Gulf LNG (Qatar is the world's largest LNG exporter) accelerates utility operator interest in nuclear baseload, supporting uranium spot price. Cameco (CCJ) is the cleanest vehicle — top-tier Canadian miner with long-term offtake contracts. Add to position if IAEA issues S3-relevant statements. Current uranium price ~$85/lb; S3 scenario could push to $120+.</div>
+        <div class="conv-risk">⚠ Long-duration trade; scenario-dependent entry signal required</div>
+      </div>
+    </div>
+
+    <div class="trade-card">
+      <div class="trade-direction">
+        <div class="trade-dir-label dir-hedge">HEDGE</div>
+        <div class="trade-tickers">VIX · UVXY<br>SPX puts</div>
+      </div>
+      <div class="trade-body">
+        <div class="trade-title">VIX Calls / SPX Puts — Tail Risk Protection</div>
+        <div class="trade-rationale">VIX at 28 is elevated but not at crisis levels (2008: 80, COVID peak: 82, Ukraine: 38). The distribution of outcomes is heavily right-skewed — if Scenario 4 materializes (Gulf infrastructure strike), VIX could spike to 50–70 within 24 hours. VIX calls (March/April expiry, 35–45 strike) or SPX put spreads (3–5% out-of-money) provide portfolio protection at reasonable cost given current implied vol. The key risk with VIX products: time decay and contango are structurally punishing. Keep sizing small (1–2% of portfolio) and treat as pure insurance rather than directional bet. Roll monthly or exit on any resolution signal.</div>
+        <div class="conv-risk">⚠ VIX options have severe time decay — position size carefully</div>
+      </div>
+    </div>
+
+  </div>
+
+</section>
+
+<!-- ==================== TAB 6: ANALYTICAL FRAMEWORKS ==================== -->
+<section class="tab-panel" id="tab-5">
+
+  <div class="pdb-block mb-6">
+<div class="pdb-title">Analytical Methods Applied to Iran Nuclear Intent &amp; Conflict Dynamics</div>
+    <div class="pdb-body">
+      <p>
+        The following analytical frameworks are applied systematically to reduce cognitive bias in assessments of Iran's nuclear program intent, regime survivability, and escalation dynamics. Analysts are encouraged to update these frameworks daily as new information becomes available from SIGINT, HUMINT, and open source collection.
+      </p>
+    </div>
+  </div>
+
+  <!-- ACH -->
+  <div class="section-label">Framework 1 — Analysis of Competing Hypotheses (ACH)</div>
+  <div class="framework-section mb-6">
+    <div class="framework-title">Iran Nuclear Program: What Is the True Intent?</div>
+    <div class="framework-subtitle">ACH matrix evaluating key evidence against four competing hypotheses. C=Consistent, I=Inconsistent, N=Not Applicable / Neutral.</div>
+    <div style="overflow-x:auto; margin-bottom: var(--sp-4);">
+      <table class="ach-table" style="min-width:700px;">
+        <thead>
+          <tr>
+            <th>Evidence Item</th>
+            <th>H1: Deterrence<br><small>Breakout option, no weaponize</small></th>
+            <th>H2: Weaponize<br><small>Active pursuit of device</small></th>
+            <th>H3: Bargain<br><small>Leverage for sanctions relief</small></th>
+            <th>H4: Abandon<br><small>Ready to deal under pressure</small></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>440 kg HEU at ~84% enrichment (sufficient for ~9 devices)</td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-i">I</span></td>
+          </tr>
+          <tr>
+            <td>IAEA reports possible military dimensions (PMD) activity at Parchin</td>
+            <td><span class="ach-cell ach-n">N</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-i">I</span></td>
+            <td><span class="ach-cell ach-i">I</span></td>
+          </tr>
+          <tr>
+            <td>Three consecutive rounds of nuclear talks (Feb 2026) — Iran participates</td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+          </tr>
+          <tr>
+            <td>Iran maximalist negotiating position (full sanctions first, then enrichment halt)</td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-n">N</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-i">I</span></td>
+          </tr>
+          <tr>
+            <td>Acceleration of enrichment to 90% announced Jan 2026</td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-i">I</span></td>
+          </tr>
+          <tr>
+            <td>Iran refuses on-demand IAEA access to new Isfahan tunnels</td>
+            <td><span class="ach-cell ach-n">N</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-i">I</span></td>
+            <td><span class="ach-cell ach-i">I</span></td>
+          </tr>
+          <tr>
+            <td>Iran accepts IAEA comprehensive safeguards in principle</td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-i">I</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+          </tr>
+          <tr>
+            <td>Khamenei fatwa against nuclear weapons (unverified, repeated claim)</td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-i">I</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-n">N</span></td>
+          </tr>
+          <tr>
+            <td>Iran acquires prohibited triggers, neutron initiator components (Intel reports)</td>
+            <td><span class="ach-cell ach-n">N</span></td>
+            <td><span class="ach-cell ach-c">C</span></td>
+            <td><span class="ach-cell ach-i">I</span></td>
+            <td><span class="ach-cell ach-i">I</span></td>
+          </tr>
+          <tr>
+            <td style="font-style:italic; color: var(--text-muted);">Diagnostic score (C=+1, I=−1, N=0)</td>
+            <td style="font-family:var(--font-mono); font-weight:700; color: var(--amber-text);">+5</td>
+            <td style="font-family:var(--font-mono); font-weight:700; color: var(--red-text);">+5</td>
+            <td style="font-family:var(--font-mono); font-weight:700; color: var(--amber-text);">+3</td>
+            <td style="font-family:var(--font-mono); font-weight:700; color: var(--green-text);">−6</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:0.8rem; color: var(--text-secondary); line-height:1.7; background: var(--bg-raised); border-radius: var(--r-md); padding: var(--sp-4); border: 1px solid var(--border);">
+      The evidence is most inconsistent with H4 (Iran is ready to abandon its nuclear program under pressure). The evidence is roughly equally consistent with H1 (deterrence option) and H2 (active weaponization), which have identical diagnostic scores — suggesting analysts cannot distinguish between them on current evidence. H3 (bargaining leverage) is plausible but cannot explain the IAEA access refusals. <strong>Iran's nuclear posture is best characterized as "hedged weaponization" — actively preparing the technical components of a weapon while retaining diplomatic deniability. The current military campaign may accelerate a breakout attempt under cover of conflict.</strong>
+    </div>
+  </div>
+
+  <!-- Red Team Analysis -->
+  <div class="section-label">Framework 2 — Red Team Analysis: Iranian Decision-Making</div>
+  <div class="framework-section mb-6">
+    <div class="framework-title">How Tehran Thinks: Velayat-e Faqih Logic &amp; Revolutionary Survival</div>
+    <div class="framework-subtitle">Red team exercise: analysts adopt the perspective of Iran's Supreme Leader and IRGC leadership to identify actions and responses the US/Israel may systematically underestimate.</div>
+    <div class="redteam-points">
+      <div class="redteam-point">
+        <div class="redteam-point-title">Survival of the Revolution Supersedes Territorial Integrity</div>
+        <div class="redteam-point-text">In the Velayat-e Faqih framework, the Islamic Republic is not merely a state — it is the embodiment of divine political authority (Khamenei as representative of the Hidden Imam). Its survival is a religious obligation. This means costs that would force a conventional state to sue for peace — including thousands of military casualties and massive economic damage — may be insufficient to coerce the clerical leadership into capitulation. US planners who model Iranian decision-making on Western rational deterrence theory systematically underestimate this threshold.</div>
+      </div>
+      <div class="redteam-point">
+        <div class="redteam-point-title">The "Mosaddegh Syndrome" — Deep Fear of US-Backed Regime Change</div>
+        <div class="redteam-point-text">Iranian strategic culture retains vivid institutional memory of the 1953 CIA-backed coup that toppled Mosaddegh. Any US military action that is accompanied by explicit regime change rhetoric — as in Operation Epic Fury — will be interpreted by IRGC leadership not as a bounded coercive campaign but as an existential threat requiring maximum resistance. Trump's "your hour of freedom" messaging, however tactically designed to fracture the regime, is simultaneously the most likely trigger for IRGC consolidation under a survival-at-all-costs doctrine.</div>
+      </div>
+      <div class="redteam-point">
+        <div class="redteam-point-title">The Nuclear Option as the Ultimate Lesson Learned from Libya</div>
+        <div class="redteam-point-text">Iran's strategic community draws a direct lesson from Muammar Gaddafi's fate: he surrendered his nuclear program in 2003 under Western pressure and was killed by Western-backed forces eight years later. North Korea, which retained its program, faces no comparable threat. In Iranian strategic thinking, the nuclear deterrent is not merely a military asset — it is the only reliable guarantee of regime survival in the face of US hostility. Under sustained military pressure, the calculus for acceleration rather than abandonment becomes compelling. This is not irrational — it is the dominant lesson of the post-Cold War era.</div>
+      </div>
+      <div class="redteam-point">
+        <div class="redteam-point-title">Asymmetric Escalation Dominance: Economic Warfare as the Equalizer</div>
+        <div class="redteam-point-text">Iran cannot win a conventional military confrontation with the US. IRGC leadership knows this. Their doctrine — developed over decades specifically for this scenario — focuses on imposing asymmetric costs that make the strategic price of military campaign exceed the political tolerance of the United States. Key tools: Hormuz mining (economic shock), attacks on Gulf Arab energy infrastructure (splitting the coalition), Iraqi militia attacks (US military casualties), Houthi anti-ship campaign (public attention). The goal is not to defeat the US militarily but to make continued operations politically unsustainable in Washington.</div>
+      </div>
+      <div class="redteam-point">
+        <div class="redteam-point-title">Internal IRGC Factions: The War Within the War</div>
+        <div class="redteam-point-text">The IRGC is not monolithic. Pragmatic factions — those managing the IRGC's vast commercial empire (construction, telecoms, oil) — have strong economic incentives to seek a deal that preserves their assets. Ideological hardliners in the Quds Force and Basij command structure prioritize revolutionary purity over economic preservation. US bombardment of IRGC economic assets (the banks, companies, property portfolios that fund senior commanders' wealth) may actually accelerate intra-IRGC conflict more effectively than military strikes on weapons systems. This is the mechanism by which Scenario 2 (Regime Change) is plausible — not through popular uprising alone, but through elite fracture under sustained economic targeting.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Theory -->
+  <div class="section-label">Framework 3 — Game Theory: Chicken, Commitment &amp; Signaling</div>
+  <div class="framework-section mb-6">
+    <div class="framework-title">The Iran-US Conflict as a Chicken Game with Commitment Problems</div>
+    <div class="framework-subtitle">Classic analysis of the strategic interaction between US/Israel (maximize) and Iran (minimize existential risk). Nash equilibria marked in amber.</div>
+    <div class="game-matrix mb-4">
+      <table style="min-width:500px;">
+        <thead>
+          <tr>
+            <th>Iran \ US-Israel</th>
+            <th>Back Down (Ceasefire)</th>
+            <th>Escalate (Sustain Strikes)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Back Down (Accept Deal)</td>
+            <td class="cell-good cell-nash">US/IL: Moderate Win<br>Iran: Face Loss, Survival</td>
+            <td class="cell-bad">US/IL: Major Win<br>Iran: Severe Loss</td>
+          </tr>
+          <tr>
+            <td>Escalate (Hormuz, Proxies)</td>
+            <td class="cell-mid">US/IL: Political Cost<br>Iran: Partial Win (buys time)</td>
+            <td class="cell-bad cell-nash">US/IL: Pyrrhic / Costly<br>Iran: Catastrophic OR Nuclear</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:0.82rem; color: var(--text-secondary); line-height:1.7;">
+      <p style="margin-bottom: var(--sp-3);">
+        <strong>Commitment Problem:</strong> The strategic dilemma is a classic chicken game with a commitment problem. Iran's optimal strategy is to credibly commit to escalation (Hormuz closure, proxy attacks, nuclear acceleration) to raise the costs of US continued operations above the political tolerance threshold. The US's optimal counter is to credibly commit to absorbing those costs — but Trump's domestic political position means high US casualties or $100+ oil prices create genuine commitment problems. The regime with greater ability to absorb pain has the structural advantage in this game.
+      </p>
+      <p>
+        <strong>Solution Concept:</strong> The Nash equilibrium that avoids catastrophe requires one actor to back down. Historical precedent (Cuba 1962, Gulf War 1991) suggests this typically requires a face-saving mechanism — an off-ramp that allows the losing party to claim partial victory. In the current context, this would require Iran to accept enrichment suspension in exchange for partial sanctions relief, with a US/Israel commitment not to pursue regime change. The challenge: Trump's explicit regime change framing has burned this bridge. A new off-ramp mechanism must be constructed — likely through Chinese/Omani mediation — before de-escalation is structurally achievable.
+      </p>
+    </div>
+  </div>
+
+  <!-- Historical Analogues -->
+  <div class="section-label">Framework 4 — Historical Analogues</div>
+  <div class="framework-section mb-6">
+    <div class="framework-title">Comparative Case Analysis: What History Tells Us</div>
+    <div class="analogue-grid">
+      <div class="analogue-card">
+        <div class="analogue-name">Operation Iraqi Freedom</div>
+        <div class="analogue-year">2003 — US vs Iraq</div>
+        <div class="analogue-text">Overwhelming US air and ground power rapidly destroyed Saddam's military. Initial military objectives achieved in 21 days. However, regime removal created a power vacuum and decade-long insurgency. Iraq WMD rationale proved false; regime change without stable successor plan produced regional chaos. Key lesson: military campaign success ≠ strategic success. The "day after" problem.</div>
+        <div class="analogue-verdict badge badge-amber">Partial Analogue — Military success, strategic failure</div>
+      </div>
+      <div class="analogue-card">
+        <div class="analogue-name">Operation Unified Protector</div>
+        <div class="analogue-year">2011 — NATO vs Libya</div>
+        <div class="analogue-text">NATO air campaign successfully removed Gaddafi in 7 months. Iran's leadership studied this closely: Gaddafi had surrendered his WMD program in 2003 under Western pressure. The "Libya model" is precisely what Iranian hardliners cite to justify nuclear retention. Post-Gaddafi Libya collapsed into failed-state civil war. Analogous to current Iran: Iran's population is larger (85M vs 7M), its institutional depth greater, and its military capability far exceeding Libya's.</div>
+        <div class="analogue-verdict badge badge-red">Strong Analogue — Iran draws opposite lesson</div>
+      </div>
+      <div class="analogue-card">
+        <div class="analogue-name">Operation Allied Force</div>
+        <div class="analogue-year">1999 — NATO vs Serbia</div>
+        <div class="analogue-text">78-day air campaign targeting Yugoslav military and eventually economic infrastructure (bridges, power plants) coerced Milosevic into withdrawal from Kosovo without ground invasion. Key success factors: Milosevic was rational and calculating, had no nuclear deterrent, and faced domestic economic pressure. Potential Iran analogue: if economic targeting (refineries, IRGC commercial assets) is combined with information operations, regime fracture is possible. Critical difference: Kosovo was not an existential threat to Serbia's existence; current campaign is existential for the Islamic Republic.</div>
+        <div class="analogue-verdict badge badge-blue">Moderate Analogue — Economic targeting key</div>
+      </div>
+      <div class="analogue-card">
+        <div class="analogue-name">Cuban Missile Crisis</div>
+        <div class="analogue-year">1962 — US vs USSR</div>
+        <div class="analogue-text">13-day nuclear standoff resolved through secret face-saving arrangement: US pledged not to invade Cuba (Iran analogue: regime survival guarantee) and quietly removed Jupiter missiles from Turkey (Iran analogue: partial sanctions relief). Both sides claimed victory. Key lesson: de-escalation requires a private channel (ExComm's secret Turkey deal) separate from public demands, and a face-saving mechanism for the weaker party. The Oman back-channel in the Iran context is the most plausible functional equivalent of the Robert Kennedy–Dobrynin channel.</div>
+        <div class="analogue-verdict badge badge-green">Strongest Analogue — Off-ramp mechanism critical</div>
+      </div>
+      <div class="analogue-card">
+        <div class="analogue-name">North Korea Nuclear Standoffs</div>
+        <div class="analogue-year">1994–2023</div>
+        <div class="analogue-text">Three decades of coercive diplomacy — threats, sanctions, negotiations, deals, collapses — failed to prevent North Korea from achieving a deliverable nuclear weapon. The regime accepted extraordinary economic suffering to preserve its deterrent. The structural lesson: a regime that believes its survival depends on nuclear weapons cannot be coerced into abandoning them through economic or military pressure alone, absent a credible and verifiable security guarantee. Iran is watching North Korea's example as closely as it watched Libya's.</div>
+        <div class="analogue-verdict badge badge-red">Critical Analogue — Regime survival logic dominant</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expert Views -->
+  <div class="section-label">Framework 5 — Expert Views Compilation</div>
+  <div class="expert-quotes">
+    <div class="expert-quote">
+      <div class="expert-text">The explicit invocation of regime change by Trump — 'your hour of freedom is at hand' — is not mere rhetorical flourish. It fundamentally alters Iran's strategic calculus. Once regime survival is on the table, the logic of deterrence inverts: every capability Iran possesses, including nuclear, becomes more valuable, not less. The administration may have inadvertently made a negotiated solution harder to reach.</div>
+      <div class="expert-attribution">
+        <div>
+          <div class="expert-name">Dr. Vali Nasr</div>
+          <div class="expert-title">Johns Hopkins SAIS — Former State Dept. Senior Advisor</div>
+        </div>
+      </div>
+    </div>
+    <div class="expert-quote">
+      <div class="expert-text">The combination of two carrier groups, B-2s, and F-22s represents a force posture that Iran simply cannot contest in the air domain. The military campaign's success in degrading missile production and IRGC command infrastructure is not seriously in doubt. The question that remains unanswered is: what does success look like the day after? No adversary has ever been bombed into democracy.</div>
+      <div class="expert-attribution">
+        <div>
+          <div class="expert-name">Gen. David Petraeus (Ret.)</div>
+          <div class="expert-title">Former CENTCOM Commander / CIA Director</div>
+        </div>
+      </div>
+    </div>
+    <div class="expert-quote">
+      <div class="expert-text">Iran's 440 kg HEU stockpile is the most dangerous single fact on the board right now. Under normal conditions, weaponization would take 6–12 months. Under emergency wartime conditions, with scientists mobilized and key components pre-positioned, that timeline compresses to weeks. The IAEA communications blackout is not just an inconvenience — it is a potential catastrophic intelligence gap at precisely the most dangerous moment.</div>
+      <div class="expert-attribution">
+        <div>
+          <div class="expert-name">Olli Heinonen</div>
+          <div class="expert-title">Former Deputy Director General, IAEA — Stimson Center</div>
+        </div>
+      </div>
+    </div>
+    <div class="expert-quote">
+      <div class="expert-text">The Hormuz scenario is not theoretical — it is operational IRGC doctrine. The fast boat swarms repositioning that's showing up in AIS gaps are textbook pre-mining behavior. If Iran commits to closure, the US has no quick answer: mine countermeasure operations in contested waters against a determined adversary take weeks to months. Oil markets are pricing maybe 15% probability of closure; I'd put it at 35–40% if operations continue past Day 3.</div>
+      <div class="expert-attribution">
+        <div>
+          <div class="expert-name">Capt. Jerry Hendrix (USN Ret.)</div>
+          <div class="expert-title">Former Director, Naval History and Heritage Command — Retired Senior Fellow, CNAS</div>
+        </div>
+      </div>
+    </div>
+    <div class="expert-quote">
+      <div class="expert-text">Beijing's posture is being misread. China condemned the strikes, but China also holds 90% of Iranian oil exports — that's extraordinary leverage. If Xi decides a protracted Iran war is worse for China's interests than a constrained nuclear Iran, Beijing's economic signal to Tehran could be decisive within 72 hours. The question is whether the Xi-Trump relationship has the bandwidth to produce that kind of quiet coordination. I'd assign it 25% probability in the first week.</div>
+      <div class="expert-attribution">
+        <div>
+          <div class="expert-name">Dr. Evan Medeiros</div>
+          <div class="expert-title">Georgetown University — Former NSC Director for China</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+</main>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+'use strict';
+
+/* ============ API URL DETECTION ============ */
+const API_URL = (() => {
+    const cgi = '/api';
+    if (cgi.startsWith('http')) return cgi + '/live.py';
+    if (window.location.hostname.includes('vercel')) return '/api/live.py';
+    return '/api/live.py';
+})();
+
+/* ============ IN-MEMORY STATE ============ */
+let state = {
+  theme: 'light',
+  activeTab: 0,
+  lastData: null,
+  trendCharts: [],
+  refreshInterval: null,
+  countdownInterval: null,
+  countdown: 60
+};
+
+/* ============ THEME TOGGLE ============ */
+function toggleTheme() {
+  state.theme = state.theme === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', state.theme);
+  const btn = document.getElementById('themeToggle');
+  btn.textContent = state.theme === 'dark' ? '☀ Light Mode' : '◐ Dark Mode';
+  if (state.trendCharts && state.trendCharts.length) {
+    updateChartColors();
+  }
+}
+
+function updateChartColors() {
+  const isDark = state.theme === 'dark';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+  const tickColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)';
+  // Update trend charts
+  (state.trendCharts || []).forEach(c => {
+    if (!c) return;
+    c.options.scales.x.grid.color = gridColor;
+    c.options.scales.y.grid.color = gridColor;
+    c.options.scales.x.ticks.color = tickColor;
+    c.options.scales.y.ticks.color = tickColor;
+    if (c.options.plugins.tooltip) {
+      c.options.plugins.tooltip.backgroundColor = isDark ? '#1c1917' : '#ffffff';
+      c.options.plugins.tooltip.titleColor = isDark ? '#fafaf9' : '#111111';
+      c.options.plugins.tooltip.bodyColor = isDark ? '#d6d3d1' : '#4a4745';
+      c.options.plugins.tooltip.borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+    }
+    c.update('none');
+  });
+}
+
+/* ============ TAB SWITCHING ============ */
+function switchTab(idx) {
+  const panels = document.querySelectorAll('.tab-panel');
+  const buttons = document.querySelectorAll('.tab-btn');
+  panels.forEach((p, i) => p.classList.toggle('active', i === idx));
+  buttons.forEach((b, i) => {
+    b.classList.toggle('active', i === idx);
+    b.setAttribute('aria-selected', i === idx);
+  });
+  state.activeTab = idx;
+}
+
+/* ============ SCENARIO TOGGLE ============ */
+function toggleScenario(headerEl) {
+  const body = headerEl.nextElementSibling;
+  const badge = headerEl.querySelector('.badge');
+  if (!body) return;
+  const collapsed = body.classList.toggle('collapsed');
+  if (badge) badge.textContent = collapsed ? '▾ EXPAND' : '▴ COLLAPSE';
+}
+
+/* ============ RELATIVE TIME ============ */
+function relativeTime(isoStr) {
+  try {
+    const d = new Date(isoStr);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffM = Math.floor(diffMs / 60000);
+    if (diffM < 1) return 'Just now';
+    if (diffM < 60) return `${diffM}m ago`;
+    const diffH = Math.floor(diffM / 60);
+    if (diffH < 24) return `${diffH}h ago`;
+    return `${Math.floor(diffH/24)}d ago`;
+  } catch { return 'Unknown'; }
+}
+
+/* ============ SOURCE BADGE COLOR ============ */
+function sourceBadgeClass(source) {
+  const s = (source || '').toLowerCase();
+  if (s.includes('iran intl') || s.includes('iranintl')) return 'badge-red';
+  if (s.includes('al jazeera') || s.includes('aljazeera')) return 'badge-red';
+  if (s.includes('reuters')) return 'badge-orange';
+  if (s.includes('bellingcat')) return 'badge-purple';
+  if (s.includes('osint') || s.includes('@')) return 'badge-purple';
+  if (s.includes('middle east eye')) return 'badge-blue';
+  if (s.includes('times of israel') || s.includes('jpost') || s.includes('jerusalem')) return 'badge-blue';
+  if (s.includes('breaking defense') || s.includes('war on the rocks')) return 'badge-green';
+  if (s.includes('google')) return 'badge-gray';
+  return 'badge-gray';
+}
+
+/* ============ RENDER NEWS FEED ============ */
+function renderNews(news) {
+  const feed = document.getElementById('newsFeed');
+  if (!news || news.length === 0) {
+    feed.innerHTML = '<div class="loading-state"><div class="text-xs text-muted font-mono">NO ITEMS IN FEED</div></div>';
+    return;
+  }
+  const sorted = [...news].sort((a, b) => new Date(b.time) - new Date(a.time));
+  feed.innerHTML = sorted.map((item, i) => {
+    const isOsint = item.type === 'osint' || item.source === 'OSINT';
+    const isBreaking = item.tag === 'breaking';
+    const badgeClass = sourceBadgeClass(item.source);
+    const tagBadge = item.tag === 'breaking' ? '<span class="badge badge-red" style="margin-left:4px;">Breaking</span>' : 
+                     item.tag === 'markets' ? '<span class="badge badge-amber" style="margin-left:4px;">Markets</span>' : 
+                     item.tag === 'osint' ? '<span class="badge badge-purple" style="margin-left:4px;">OSINT</span>' : '';
+
+    return `<div class="news-item ${isBreaking ? 'breaking' : ''} ${isOsint ? 'osint' : ''}" style="animation-delay:${i * 0.04}s">
+      <div class="news-item-header">
+        <span class="badge ${badgeClass}">${item.source}</span>
+        ${tagBadge}
+      </div>
+      <div class="news-title">
+        <a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.title}</a>
+      </div>
+      <div class="news-excerpt">${item.excerpt}</div>
+      <div class="news-footer">
+        <span class="news-time">${relativeTime(item.time)} · ${item.time.replace('T', ' ').substring(0,16)} GMT</span>
+        <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="text-xs font-mono" style="color: var(--blue-text);">Read →</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ============ RENDER MARKET SIDEBAR (COMPACT) ============ */
+function renderMarkets(markets) {
+  const grid = document.getElementById('marketGrid');
+  if (!markets || markets.length === 0) {
+    grid.innerHTML = '<div class="loading-state"><div class="text-xs text-muted font-mono">NO MARKET DATA</div></div>';
+    return;
+  }
+  const palette = ['#2563eb','#c41e1e','#d97706','#16a34a','#7c3aed','#0891b2','#db2777','#ea580c','#ca8a04'];
+  grid.innerHTML = markets.map((m, i) => {
+    const prob = m.outcomes && m.outcomes[0] ? m.outcomes[0].probability : 50;
+    const probClass = prob >= 65 ? 'high' : prob >= 35 ? 'medium' : 'low';
+    const color = palette[i % palette.length];
+    return `<a href="${m.url}" target="_blank" rel="noopener noreferrer" class="market-compact-card" style="--card-accent:${color};">
+      <div class="market-compact-prob ${probClass} data-num">${prob.toFixed(1)}%</div>
+      <div class="market-compact-info">
+        <div class="market-compact-question">${m.question}</div>
+        <div class="market-compact-vol">${m.volumeFormatted || ''} vol · Polymarket</div>
+      </div>
+    </a>`;
+  }).join('');
+  grid.classList.add('fade-in');
+}
+
+/* ============ RENDER POLYMARKET TREND CARDS (SCENARIOS TAB) ============ */
+function pmTimeHorizonLabel(pts) {
+  // Compute a human-readable time horizon from the first and last data points
+  if (!pts || pts.length < 2) return '';
+  try {
+    const first = new Date(pts[0].t);
+    const last  = new Date(pts[pts.length - 1].t);
+    const diffMs = last - first;
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    if (diffDays >= 365) {
+      return `${(diffDays / 365).toFixed(1)}y history`;
+    } else if (diffDays >= 60) {
+      return `${Math.round(diffDays / 30)}mo history`;
+    } else if (diffDays >= 14) {
+      return `${Math.round(diffDays / 7)}wk history`;
+    } else if (diffDays >= 2) {
+      return `${Math.round(diffDays)}d history`;
+    } else {
+      return `${Math.round(diffDays * 24)}h history`;
+    }
+  } catch (e) {
+    return '';
+  }
+}
+
+function pmXAxisUnit(pts) {
+  // Pick Chart.js time unit based on data range
+  if (!pts || pts.length < 2) return 'day';
+  try {
+    const first = new Date(pts[0].t);
+    const last  = new Date(pts[pts.length - 1].t);
+    const diffDays = (last - first) / (1000 * 60 * 60 * 24);
+    if (diffDays >= 180) return 'month';
+    if (diffDays >= 30)  return 'week';
+    if (diffDays >= 3)   return 'day';
+    return 'hour';
+  } catch (e) {
+    return 'day';
+  }
+}
+
+function renderPmTrends(markets, oddsHistory) {
+  const grid = document.getElementById('pmTrendsGrid');
+  if (!grid) return;
+
+  // Destroy old chart instances
+  state.trendCharts.forEach(c => c.destroy());
+  state.trendCharts = [];
+
+  if (!markets || markets.length === 0) {
+    grid.innerHTML = '<div class="loading-state" style="grid-column:1/-1;padding:var(--sp-8);text-align:center;"><div class="text-xs text-muted font-mono">NO MARKET DATA AVAILABLE</div></div>';
+    return;
+  }
+
+  const isDark = state.theme === 'dark';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+  const tickColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)';
+  // Single neutral color — design system compliance
+  const lineColor = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(28,25,23,0.50)';
+  const fillColor = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(28,25,23,0.04)';
+
+  // Sort by volume descending and take top 6
+  const sorted = [...markets].sort((a, b) => (b.volume || 0) - (a.volume || 0)).slice(0, 6);
+
+  // Build cards HTML with delta indicators and time horizon
+  grid.innerHTML = sorted.map((m, i) => {
+    const prob = m.outcomes && m.outcomes[0] ? m.outcomes[0].probability : 50;
+    const probClass = prob >= 60 ? 'high' : prob >= 30 ? 'medium' : 'low';
+    const canvasId = `pmChart${i}`;
+    const question = m.question;
+    const histData = oddsHistory && oddsHistory[question];
+    let delta = null;
+    let horizonLabel = '';
+    if (histData) {
+      const firstKey = Object.keys(histData)[0];
+      if (firstKey && histData[firstKey].length >= 2) {
+        const hpts = histData[firstKey];
+        delta = +(prob - hpts[0].y).toFixed(1);
+        horizonLabel = pmTimeHorizonLabel(hpts);
+      }
+    }
+    const deltaHtml = delta !== null
+      ? `<span class="pm-trend-delta ${delta > 0.3 ? 'up' : delta < -0.3 ? 'down' : 'flat'}">${delta > 0 ? '\u25b2 +' : delta < 0 ? '\u25bc ' : '\u2014 '}${Math.abs(delta).toFixed(1)}pp</span>`
+      : '';
+    const horizonHtml = horizonLabel
+      ? `<span class="pm-trend-horizon">${horizonLabel}</span>`
+      : '';
+    return `<a href="${m.url || 'https://polymarket.com'}" target="_blank" rel="noopener noreferrer" class="pm-trend-card" style="text-decoration:none;color:inherit;">
+      <div class="pm-trend-header">
+        <div class="pm-trend-question">${m.question}</div>
+        <div class="pm-trend-prob ${probClass}">${prob.toFixed(1)}%</div>
+      </div>
+      <div class="pm-trend-meta">
+        <span class="pm-trend-vol">${m.volumeFormatted || '\u2014'} vol \u00b7 Polymarket${horizonLabel ? ' \u00b7 ' + horizonLabel : ''}</span>
+        ${deltaHtml}
+      </div>
+      <div class="pm-trend-chart-wrap">
+        <canvas id="${canvasId}"></canvas>
+      </div>
+    </a>`;
+  }).join('');
+
+  // Render individual charts
+  sorted.forEach((m, i) => {
+    const canvasEl = document.getElementById(`pmChart${i}`);
+    if (!canvasEl) return;
+
+    const question = m.question;
+    const histData = oddsHistory && oddsHistory[question];
+    let pts = [];
+    if (histData) {
+      const firstKey = Object.keys(histData)[0];
+      if (firstKey) pts = histData[firstKey];
+    }
+
+    // If no history, create a flat line at current prob
+    if (!pts || pts.length === 0) {
+      const prob = m.outcomes && m.outcomes[0] ? m.outcomes[0].probability : 50;
+      const now = new Date();
+      for (let j = 14; j >= 0; j--) {
+        const t = new Date(now - j * 6 * 3600000);
+        pts.push({ t: t.toISOString(), y: prob });
+      }
+    }
+
+    // Auto-scale Y axis to data range ± 10pp
+    const yValues = pts.map(p => p.y);
+    const yMin = Math.max(0, Math.floor((Math.min(...yValues) - 10) / 5) * 5);
+    const yMax = Math.min(100, Math.ceil((Math.max(...yValues) + 10) / 5) * 5);
+    const yStep = Math.max(5, Math.round((yMax - yMin) / 4 / 5) * 5);
+
+    // Adaptive X-axis unit based on data range
+    const xUnit = pmXAxisUnit(pts);
+    const xDisplayFormats = { month: 'MMM yyyy', week: 'MMM d', day: 'MMM d', hour: 'HH:mm' };
+
+    const ctx = canvasEl.getContext('2d');
+
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: [{
+          data: pts.map(p => ({ x: p.t, y: p.y })),
+          borderColor: lineColor,
+          backgroundColor: fillColor,
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: isDark ? '#fafaf9' : '#1c1917',
+          tension: 0.35,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: isDark ? '#1c1917' : '#ffffff',
+            titleColor: isDark ? '#fafaf9' : '#111111',
+            bodyColor: isDark ? '#d6d3d1' : '#4a4745',
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+            borderWidth: 1,
+            cornerRadius: 4,
+            padding: 8,
+            titleFont: { family: "'JetBrains Mono', monospace", size: 10 },
+            bodyFont: { family: "'JetBrains Mono', monospace", size: 11 },
+            callbacks: {
+              title: (items) => {
+                if (!items.length) return '';
+                const d = new Date(items[0].parsed.x);
+                const hh = String(d.getUTCHours()).padStart(2,'0');
+                const mm = String(d.getUTCMinutes()).padStart(2,'0');
+                return d.toLocaleDateString('en-US', {month:'short',day:'numeric'}) + ' ' + hh + ':' + mm + ' GMT';
+              },
+              label: (ctx) => `  ${ctx.parsed.y.toFixed(1)}% probability`
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: { unit: xUnit, displayFormats: xDisplayFormats },
+            grid: { color: gridColor, drawBorder: false },
+            ticks: { color: tickColor, font: { family: "'JetBrains Mono', monospace", size: 9 }, maxTicksLimit: 5 },
+            border: { display: false }
+          },
+          y: {
+            min: yMin, max: yMax,
+            grid: { color: gridColor, drawBorder: false },
+            ticks: {
+              color: tickColor,
+              font: { family: "'JetBrains Mono', monospace", size: 9 },
+              callback: v => v + '%',
+              stepSize: yStep
+            },
+            border: { display: false }
+          }
+        }
+      }
+    });
+
+    state.trendCharts.push(chart);
+  });
+}
+
+/* ============ UPDATE UI FROM DATA ============ */
+function applyData(data) {
+  state.lastData = data;
+
+  // Header timestamp
+  const ts = document.getElementById('headerTimestamp');
+  if (ts) ts.textContent = data.lastUpdated || new Date().toUTCString();
+
+  // Market last updated badge
+  const mlu = document.getElementById('marketLastUpdated');
+  if (mlu) { mlu.textContent = data.lastUpdated || 'Live'; mlu.className = 'badge badge-gray'; }
+
+  // Last updated display
+  const lud = document.getElementById('lastUpdatedDisplay');
+  if (lud) lud.textContent = 'Updated: ' + (data.lastUpdated || 'Just now');
+
+  renderMarkets(data.markets);
+  renderNews(data.news);
+  // Render Polymarket trend charts in Scenarios tab
+  renderPmTrends(data.markets, data.oddsHistory);
+}
+
+/* ============ FETCH FROM API ============ */
+async function fetchData() {
+  // Show fallback data immediately for instant content
+  applyData(getFallbackData());
+  try {
+    const res = await fetch(API_URL, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    // Validate: only use API data if it has Iran-relevant content
+    const hasIranMarkets = data && data.markets && data.markets.some(m => 
+      m.question && (m.question.toLowerCase().includes('iran') || 
+                     m.question.toLowerCase().includes('ceasefire') ||
+                     m.question.toLowerCase().includes('hormuz') ||
+                     m.question.toLowerCase().includes('nuclear'))
+    );
+    const hasIranNews = data && data.news && data.news.length > 0;
+    if (hasIranMarkets && hasIranNews) {
+      applyData(data);
+    } else if (hasIranNews && !hasIranMarkets) {
+      // Use API news but keep fallback markets
+      const fallback = getFallbackData();
+      applyData({ ...data, markets: fallback.markets, oddsHistory: fallback.oddsHistory });
+    }
+    // If neither, fallback data already shown — nothing to do
+  } catch (err) {
+    console.warn('API unavailable, using fallback data:', err.message);
+    // Fallback already shown above
+  }
+}
+
+/* ============ FALLBACK DATA ============ */
+function getFallbackData() {
+  const now = new Date();
+  const lu = now.toUTCString().replace(',', '').split(' ').slice(1).join(' ');
+  
+  const mkts = [
+    { question: "Will Iran and the US reach a ceasefire in March 2026?", volume: 2840000, volumeFormatted: "$2.8M", outcomes: [{ label: "Yes", probability: 38.5 }], url: "https://polymarket.com" },
+    { question: "Will Iran close the Strait of Hormuz in 2026?", volume: 1920000, volumeFormatted: "$1.9M", outcomes: [{ label: "Yes", probability: 22.3 }], url: "https://polymarket.com" },
+    { question: "Will Iran test a nuclear device in 2026?", volume: 3100000, volumeFormatted: "$3.1M", outcomes: [{ label: "Yes", probability: 12.7 }], url: "https://polymarket.com" },
+    { question: "Will Iranian regime fall by end of 2026?", volume: 4250000, volumeFormatted: "$4.3M", outcomes: [{ label: "Yes", probability: 29.4 }], url: "https://polymarket.com" },
+    { question: "Will oil exceed $100 by April 2026?", volume: 5600000, volumeFormatted: "$5.6M", outcomes: [{ label: "Yes", probability: 41.2 }], url: "https://polymarket.com" },
+    { question: "Will Hezbollah re-enter the war in 2026?", volume: 870000, volumeFormatted: "$870K", outcomes: [{ label: "Yes", probability: 31.8 }], url: "https://polymarket.com" },
+  ];
+
+  function makeHist(base) {
+    const pts = [];
+    for (let i = 14; i >= 0; i--) {
+      const t = new Date(now - i * 6 * 3600000);
+      const noise = (Math.random() - 0.5) * 6 * (i / 14);
+      pts.push({ t: t.toISOString(), y: Math.min(99, Math.max(1, +(base + noise).toFixed(1))) });
+    }
+    pts[pts.length - 1].y = base;
+    return pts;
+  }
+
+  const history = {};
+  mkts.forEach(m => { history[m.question] = { Yes: makeHist(m.outcomes[0].probability) }; });
+
+  const news = [
+    { id:"n1", type:"news", tag:"breaking", source:"Al Jazeera", title:"US launches 'Operation Epic Fury': Trump declares 'major combat operations' against Iran", excerpt:"US B-2 stealth bombers and naval forces struck targets in Tehran, Isfahan, Qom, Karaj and Kermanshah overnight. President Trump: 'We will destroy their missiles and raze their missile industry.'", url:"https://www.aljazeera.com/news/", time:"2026-02-28T06:00:00Z"},
+    { id:"n2", type:"news", tag:"breaking", source:"Reuters", title:"Israel launches 'Operation Lion's Roar' as Defense Minister Katz declares state of emergency", excerpt:"Israeli Air Force conducted simultaneous preemptive strikes coordinated with US forces. State of emergency declared across Israel.", url:"https://www.reuters.com/world/middle-east/", time:"2026-02-28T05:45:00Z"},
+    { id:"n3", type:"osint", tag:"osint", source:"OSINT", title:"IRGC confirms 'first wave' retaliatory missile and drone strikes on US bases in Bahrain, Kuwait, UAE", excerpt:"Iranian state media confirms ballistic missiles and Shahed UAVs targeting US military installations across Gulf states. Casualties unconfirmed.", url:"https://x.com/search?q=iran+strike+retaliation", time:"2026-02-28T07:30:00Z"},
+    { id:"n4", type:"osint", tag:"osint", source:"OSINT", title:"@Faytuks: IRGC Quds Force HQ struck — Supreme Leader relocated to hardened bunker per Western intel intercepts", excerpt:"Multiple SIGINT sources confirm Khamenei moved to underground facility. IRGC Quds Force command reportedly disrupted. Coordination with proxy networks affected.", url:"https://x.com/Faytuks", time:"2026-02-28T08:00:00Z"},
+    { id:"n5", type:"news", tag:"markets", source:"Reuters", title:"Markets: Bitcoin -6% to $63K; Oil at 7-month highs ($67 WTI / $73 Brent); Gold +2% to $5,296", excerpt:"Global markets react to outbreak of US-Iran hostilities. Crude benchmarks surge on Hormuz closure fears. Safe-haven assets rally.", url:"https://www.reuters.com/markets/", time:"2026-02-28T08:15:00Z"},
+    { id:"n6", type:"osint", tag:"osint", source:"OSINT", title:"@AuroraIntel: Confirmed hits on Shahab-3 and Sejjil missile production facilities at Parchin and Imam Ali", excerpt:"Open-source imagery analysis confirms multiple direct strikes on key ballistic missile manufacturing sites. Fires visible at Isfahan enrichment complex.", url:"https://x.com/AuroraIntel", time:"2026-02-28T07:00:00Z"},
+    { id:"n7", type:"news", tag:"breaking", source:"Iran Intl", title:"Trump addresses Iranian people: 'Your hour of freedom is at hand — take over your government'", excerpt:"Presidential statement broadcast on Farsi-language channels signals regime change objective. Messages relayed via social media and diaspora networks.", url:"https://www.iranintl.com/en", time:"2026-02-28T06:30:00Z"},
+    { id:"n8", type:"osint", tag:"osint", source:"OSINT", title:"@claboringwar: IAEA confirms all comms with inspectors at Isfahan severed — nuclear status unknown", excerpt:"International Atomic Energy Agency emergency board meeting convened. No contact with on-site personnel since strikes began. Enrichment status unconfirmed.", url:"https://x.com/search?q=IAEA+isfahan+iran", time:"2026-02-28T09:00:00Z"},
+    { id:"n9", type:"osint", tag:"osint", source:"OSINT", title:"@IntelCrab: USS Gerald R. Ford CSG + USS Abraham Lincoln CSG both within strike range", excerpt:"Both carrier strike groups confirmed in operational position. Total naval firepower represents largest US combat deployment to region since 2003.", url:"https://x.com/IntelCrab", time:"2026-02-28T05:00:00Z"},
+    { id:"n10", type:"news", tag:"analysis", source:"Al Jazeera", title:"Houthis declare 'full operational readiness' against US and Israeli targets in Red Sea", excerpt:"Yemen's Houthi movement announces activation of all naval and missile capabilities in solidarity with Iran. Red Sea shipping disruption expected.", url:"https://www.aljazeera.com/news/", time:"2026-02-28T08:45:00Z"},
+    { id:"n11", type:"osint", tag:"osint", source:"OSINT", title:"@sentdefender: Iraqi Hashd al-Shaabi militias placing weapons on high alert near Ain al-Asad", excerpt:"Multiple reports of Iranian-backed Iraqi militia movements near US military positions. Rocket attack imminent threat assessment elevated.", url:"https://x.com/sentdefender", time:"2026-02-28T09:15:00Z"},
+    { id:"n12", type:"news", tag:"analysis", source:"Middle East Eye", title:"China demands 'immediate cessation of hostilities'; Russia convenes UNSC emergency session", excerpt:"Beijing and Moscow condemning strikes but offering no material support to Tehran. UN Security Council convenes at 18:00 GMT. Neither signaling intervention.", url:"https://www.middleeasteye.net", time:"2026-02-28T09:30:00Z"},
+    { id:"n13", type:"news", tag:"breaking", source:"Reuters", title:"Oil tanker traffic through Strait of Hormuz halted; Iran warns of 'complete closure'", excerpt:"Commercial shipping has ceased transiting the strait following Iranian warnings. Lloyd's of London suspends war risk insurance for Persian Gulf. 20 million barrels/day flow at risk.", url:"https://www.reuters.com/markets/commodities/", time:"2026-02-28T09:45:00Z"},
+    { id:"n14", type:"osint", tag:"osint", source:"OSINT", title:"@LOABORINGWAR: IRGC fast attack boat swarms repositioning in Hormuz narrows — classic mining preparation pattern", excerpt:"Satellite imagery and AIS data showing unusual IRGC Navy movements consistent with pre-mining operations. Multiple VLCC tankers have altered course.", url:"https://x.com/search?q=hormuz+iran+navy", time:"2026-02-28T08:30:00Z"},
+    { id:"n15", type:"news", tag:"analysis", source:"Breaking Defense", title:"Pentagon confirms Phase 1 objectives achieved; Phase 2 targeting IRGC C2 nodes imminent", excerpt:"Defense officials confirm successful neutralization of primary missile storage facilities. Second wave targeting IRGC command infrastructure expected within 24-48 hours.", url:"https://breakingdefense.com", time:"2026-02-28T09:50:00Z"},
+  ];
+
+  return {
+    timestamp: now.toISOString(),
+    lastUpdated: lu,
+    news,
+    markets: mkts,
+    oddsHistory: history,
+    meta: { newsCount: news.length, marketsCount: mkts.length, dataSource: 'fallback' }
+  };
+}
+
+/* ============ COUNTDOWN TIMER ============ */
+function startCountdown() {
+  state.countdown = 60;
+  if (state.countdownInterval) clearInterval(state.countdownInterval);
+  state.countdownInterval = setInterval(() => {
+    state.countdown--;
+    const el = document.getElementById('refreshCountdown');
+    if (el) el.textContent = state.countdown;
+    if (state.countdown <= 0) {
+      state.countdown = 60;
+      fetchData();
+    }
+  }, 1000);
+}
+
+/* ============ HEADER CLOCK ============ */
+function updateClock() {
+  const ts = document.getElementById('headerTimestamp');
+  if (!ts) return;
+  const now = new Date();
+  const hh = String(now.getUTCHours()).padStart(2,'0');
+  const mm = String(now.getUTCMinutes()).padStart(2,'0');
+  const ss = String(now.getUTCSeconds()).padStart(2,'0');
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const d = now.getUTCDate();
+  const mo = months[now.getUTCMonth()];
+  const y = now.getUTCFullYear();
+  ts.textContent = `${d} ${mo} ${y} · ${hh}:${mm}:${ss} GMT`;
+}
+
+/* ============ INIT ============ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Start clock
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // Initial data fetch
+  fetchData();
+
+  // Start refresh countdown
+  startCountdown();
+
+  // Open first scenario on load for discoverability
+  const firstScenario = document.querySelector('.scenario-header');
+  if (firstScenario) toggleScenario(firstScenario);
+});
+</script>
+
+<!-- ==================== CHAT WIDGET (Messenger-style) ==================== -->
+<div class="chat-widget collapsed" id="chatWidget">
+  <div class="chat-titlebar" onclick="toggleChat()">
+    <span class="chat-titlebar-label">Situation Room</span>
+    <span class="chat-titlebar-online" id="chatOnlineCount"></span>
+    <div class="chat-titlebar-dots" id="chatOnlineDots"></div>
+    <span class="chat-titlebar-badge" id="chatBadge">0</span>
+    <span class="chat-titlebar-chevron">&#9650;</span>
+  </div>
+  <div class="chat-body">
+    <div class="chat-identity-bar" id="chatIdentityBar" style="display:none;">
+      <div class="chat-my-dot" id="chatMyDot"></div>
+      <div class="chat-my-name" id="chatMyName"></div>
+      <div class="chat-my-label">YOUR CALLSIGN</div>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-system-msg">Secure channel established. All analysts monitoring this crisis can communicate here.</div>
+    </div>
+    <div class="chat-input-area">
+      <input type="text" class="chat-input" id="chatInput" placeholder="Transmit to all analysts..." maxlength="500" onkeydown="if(event.key==='Enter')sendChatMessage()">
+      <button class="chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ CHAT SYSTEM ============ */
+const CHAT_API = (typeof API_URL !== 'undefined' ? API_URL.replace(/\/live\.py$/, '/chat.py') : '/api/chat.py');
+
+/* On Vercel, sub-path routing (chat.py/session) doesn't work — use ?action= param */
+const IS_VERCEL = window.location.hostname.includes('vercel.app');
+function chatUrl(action) {
+  if (IS_VERCEL) return CHAT_API + '?action=' + action;
+  return CHAT_API + '/' + action;
+}
+
+const chatState = {
+  open: false,
+  analyst: null,
+  color: null,
+  lastMsgId: 0,
+  lastMsgTime: null,
+  pollInterval: null,
+  heartbeatInterval: null,
+  unreadCount: 0,
+  initialized: false
+};
+
+function toggleChat() {
+  chatState.open = !chatState.open;
+  const widget = document.getElementById('chatWidget');
+  widget.classList.toggle('collapsed', !chatState.open);
+  widget.classList.toggle('expanded', chatState.open);
+  if (chatState.open) {
+    chatState.unreadCount = 0;
+    updateChatBadge();
+    if (!chatState.initialized) {
+      initChat();
+    }
+    setTimeout(() => { document.getElementById('chatInput').focus(); scrollChatToBottom(); }, 260);
+  }
+}
+
+async function initChat() {
+  chatState.initialized = true;
+  try {
+    // Create session to get analyst codename
+    const res = await fetch(chatUrl('session'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    const data = await res.json();
+    chatState.analyst = data.analyst;
+    chatState.color = data.color;
+
+    // Show identity bar
+    const bar = document.getElementById('chatIdentityBar');
+    bar.style.display = 'flex';
+    document.getElementById('chatMyDot').style.background = data.color;
+    document.getElementById('chatMyName').textContent = data.analyst;
+
+    // Add system message
+    addSystemMessage(`You are ${data.analyst}`);
+
+    // Load messages
+    await pollMessages();
+
+    // Start polling
+    chatState.pollInterval = setInterval(pollMessages, 4000);
+    chatState.heartbeatInterval = setInterval(sendHeartbeat, 30000);
+    sendHeartbeat();
+    pollOnline();
+    setInterval(pollOnline, 15000);
+  } catch (err) {
+    addSystemMessage('Connection failed. Chat unavailable.');
+    console.warn('Chat init failed:', err);
+  }
+}
+
+async function pollMessages() {
+  try {
+    let url = chatUrl('messages');
+    if (chatState.lastMsgTime) {
+      url += '?since=' + encodeURIComponent(chatState.lastMsgTime);
+    }
+    const res = await fetch(url);
+    const msgs = await res.json();
+    if (!Array.isArray(msgs)) return;
+
+    let hasNew = false;
+    msgs.forEach(msg => {
+      if (msg.id > chatState.lastMsgId) {
+        renderChatMessage(msg);
+        chatState.lastMsgId = msg.id;
+        chatState.lastMsgTime = msg.time;
+        hasNew = true;
+        // Count unread if popup is closed
+        if (!chatState.open && msg.analyst !== chatState.analyst) {
+          chatState.unreadCount++;
+          updateChatBadge();
+        }
+      }
+    });
+
+    if (hasNew) scrollChatToBottom();
+  } catch (err) {
+    // Silently fail on poll
+  }
+}
+
+function renderChatMessage(msg) {
+  const container = document.getElementById('chatMessages');
+  const isMine = msg.analyst === chatState.analyst;
+  const timeStr = formatChatTime(msg.time);
+
+  const el = document.createElement('div');
+  el.className = `chat-msg ${isMine ? 'mine' : 'other'}`;
+  el.innerHTML = `
+    ${!isMine ? `<div class="chat-msg-sender" style="color:${msg.color || '#666'}">${escHtml(msg.analyst)}</div>` : ''}
+    <div class="chat-msg-bubble">${escHtml(msg.text)}</div>
+    <div class="chat-msg-time">${timeStr}</div>
+  `;
+  container.appendChild(el);
+}
+
+function addSystemMessage(text) {
+  const container = document.getElementById('chatMessages');
+  const el = document.createElement('div');
+  el.className = 'chat-system-msg';
+  el.textContent = text;
+  container.appendChild(el);
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !chatState.analyst) return;
+
+  input.value = '';
+  const btn = document.getElementById('chatSendBtn');
+  btn.disabled = true;
+
+  try {
+    await fetch(chatUrl('messages'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ analyst: chatState.analyst, text })
+    });
+    // Immediately poll to show the message
+    await pollMessages();
+  } catch (err) {
+    addSystemMessage('Failed to send message.');
+  } finally {
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+async function sendHeartbeat() {
+  if (!chatState.analyst) return;
+  try {
+    await fetch(chatUrl('heartbeat'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ analyst: chatState.analyst })
+    });
+  } catch {}
+}
+
+async function pollOnline() {
+  try {
+    const res = await fetch(chatUrl('online'));
+    const online = await res.json();
+    if (!Array.isArray(online)) return;
+
+    const countEl = document.getElementById('chatOnlineCount');
+    countEl.textContent = `${online.length} analyst${online.length !== 1 ? 's' : ''} online`;
+
+    const dotsEl = document.getElementById('chatOnlineDots');
+    dotsEl.innerHTML = online.slice(0, 8).map(a => 
+      `<div class="chat-online-dot" style="background:${a.color}" title="${escHtml(a.analyst)}"></div>`
+    ).join('');
+  } catch {}
+}
+
+function scrollChatToBottom() {
+  const el = document.getElementById('chatMessages');
+  requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+}
+
+function updateChatBadge() {
+  const badge = document.getElementById('chatBadge');
+  if (chatState.unreadCount > 0) {
+    badge.textContent = chatState.unreadCount > 9 ? '9+' : chatState.unreadCount;
+    badge.classList.add('active');
+  } else {
+    badge.classList.remove('active');
+  }
+}
+
+function formatChatTime(isoStr) {
+  try {
+    const d = new Date(isoStr);
+    const hh = String(d.getUTCHours()).padStart(2,'0');
+    const mm = String(d.getUTCMinutes()).padStart(2,'0');
+    return hh + ':' + mm + ' GMT';
+  } catch { return ''; }
+}
+
+function escHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+
+</body>
+</html>
