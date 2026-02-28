@@ -1751,11 +1751,9 @@ button { cursor: pointer; font-family: inherit; }
     flex-wrap: wrap;
     gap: var(--sp-2);
   }
-  .header-logo { order: 1; }
-  .header-right { order: 2; margin-left: auto; }
-  .header-timestamp { font-size: 0.72rem; }
+  .header-timestamp { font-size: 0.75rem; }
 
-  /* Tabs: larger touch targets, hide decorative numbers */
+  /* Tabs: WCAG 2.5.8 touch targets (44px min), hide decorative numbers */
   .tab-nav {
     gap: var(--sp-1);
     padding: var(--sp-2) var(--sp-3);
@@ -1766,6 +1764,9 @@ button { cursor: pointer; font-family: inherit; }
     min-height: 44px;
   }
   .tab-num { display: none; }
+
+  /* Tab nav: make non-sticky on mobile since header height is dynamic */
+  .tab-nav { position: relative; top: auto; }
 }
 
 /* ============================================================
@@ -3582,16 +3583,16 @@ function renderNews(news) {
 
     return `<div class="news-item ${isBreaking ? 'breaking' : ''} ${isOsint ? 'osint' : ''}" style="animation-delay:${i * 0.04}s">
       <div class="news-item-header">
-        <span class="badge ${badgeClass}">${item.source}</span>
+        <span class="badge ${badgeClass}">${escHtml(item.source)}</span>
         ${tagBadge}
       </div>
       <div class="news-title">
-        <a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.title}</a>
+        <a href="${escHtml(item.url)}" target="_blank" rel="noopener noreferrer">${escHtml(item.title)}</a>
       </div>
-      <div class="news-excerpt">${item.excerpt}</div>
+      <div class="news-excerpt">${escHtml(item.excerpt)}</div>
       <div class="news-footer">
         <span class="news-time">${relativeTime(item.time)} · ${item.time.replace('T', ' ').substring(0,16)} GMT</span>
-        <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="text-xs font-mono" style="color: var(--blue-text);">Read →</a>
+        <a href="${escHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="text-xs font-mono" style="color: var(--blue-text);">Read →</a>
       </div>
     </div>`;
   }).join('');
@@ -3609,10 +3610,10 @@ function renderMarkets(markets) {
     const prob = m.outcomes && m.outcomes[0] ? m.outcomes[0].probability : 50;
     const probClass = prob >= 65 ? 'high' : prob >= 35 ? 'medium' : 'low';
     const color = palette[i % palette.length];
-    return `<a href="${m.url}" target="_blank" rel="noopener noreferrer" class="market-compact-card" style="--card-accent:${color};">
+    return `<a href="${escHtml(m.url)}" target="_blank" rel="noopener noreferrer" class="market-compact-card" style="--card-accent:${color};">
       <div class="market-compact-prob ${probClass} data-num">${prob.toFixed(1)}%</div>
       <div class="market-compact-info">
-        <div class="market-compact-question">${m.question}</div>
+        <div class="market-compact-question">${escHtml(m.question)}</div>
         <div class="market-compact-vol">${m.volumeFormatted || ''} vol · Polymarket</div>
       </div>
     </a>`;
@@ -3707,9 +3708,9 @@ function renderPmTrends(markets, oddsHistory) {
     const horizonHtml = horizonLabel
       ? `<span class="pm-trend-horizon">${horizonLabel}</span>`
       : '';
-    return `<a href="${m.url || 'https://polymarket.com'}" target="_blank" rel="noopener noreferrer" class="pm-trend-card" style="text-decoration:none;color:inherit;">
+    return `<a href="${escHtml(m.url || 'https://polymarket.com')}" target="_blank" rel="noopener noreferrer" class="pm-trend-card" style="text-decoration:none;color:inherit;">
       <div class="pm-trend-header">
-        <div class="pm-trend-question">${m.question}</div>
+        <div class="pm-trend-question">${escHtml(m.question)}</div>
         <div class="pm-trend-prob ${probClass}">${prob.toFixed(1)}%</div>
       </div>
       <div class="pm-trend-meta">
@@ -4119,10 +4120,11 @@ function renderChatMessage(msg) {
   const isMine = msg.analyst === chatState.analyst;
   const timeStr = formatChatTime(msg.time);
 
+  const safeColor = /^#[0-9a-fA-F]{3,6}$/.test(msg.color) ? msg.color : '#666';
   const el = document.createElement('div');
   el.className = `chat-msg ${isMine ? 'mine' : 'other'}`;
   el.innerHTML = `
-    ${!isMine ? `<div class="chat-msg-sender" style="color:${msg.color || '#666'}">${escHtml(msg.analyst)}</div>` : ''}
+    ${!isMine ? `<div class="chat-msg-sender" style="color:${safeColor}">${escHtml(msg.analyst)}</div>` : ''}
     <div class="chat-msg-bubble">${escHtml(msg.text)}</div>
     <div class="chat-msg-time">${timeStr}</div>
   `;
