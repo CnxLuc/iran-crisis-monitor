@@ -524,7 +524,16 @@ button { cursor: pointer; font-family: inherit; }
   margin-bottom: var(--sp-4);
   padding-bottom: var(--sp-3);
   border-bottom: 1px solid var(--border);
-  gap: var(--sp-3);
+  gap: var(--sp-2);
+  overflow: hidden;
+}
+.sidebar-header .badge {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.5rem;
+  padding: 2px 6px;
 }
 .sidebar-title {
   font-family: var(--font-display);
@@ -551,13 +560,14 @@ button { cursor: pointer; font-family: inherit; }
   border: 1px solid var(--border);
   border-left: 3px solid var(--card-accent, #2563eb);
   border-radius: 0 var(--r-sm) var(--r-sm) 0;
-  padding: var(--sp-3) var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
   text-decoration: none;
   transition: background 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out);
   color: inherit;
+  overflow: hidden;
 }
 .market-compact-card:hover {
   background: var(--bg-raised);
@@ -566,12 +576,12 @@ button { cursor: pointer; font-family: inherit; }
 }
 .market-compact-prob {
   font-family: var(--font-mono);
-  font-size: clamp(1.1rem, 1.8vw, 1.4rem);
+  font-size: 0.82rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums lining-nums;
   line-height: 1;
   flex-shrink: 0;
-  min-width: 72px;
+  min-width: 44px;
   text-align: right;
   letter-spacing: -0.02em;
   white-space: nowrap;
@@ -584,20 +594,25 @@ button { cursor: pointer; font-family: inherit; }
   min-width: 0;
 }
 .market-compact-question {
-  font-size: 0.78rem;
+  font-size: 0.62rem;
   font-weight: 500;
   color: var(--text-primary);
-  line-height: 1.35;
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  margin-bottom: 3px;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+  word-break: break-word;
 }
 .market-compact-vol {
   font-family: var(--font-mono);
   font-size: 0.65rem;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 @media (max-width: 1024px) {
   .live-split {
@@ -4192,12 +4207,18 @@ document.addEventListener('DOMContentLoaded', () => {
 <script>
 /* ============ CHAT SYSTEM ============ */
 const CHAT_API = (typeof API_URL !== 'undefined' ? API_URL.replace(/\/live\.py$/, '/chat.py') : '/api/chat.py');
+const CHAT_MESSAGE_TTL_MS = 5 * 60 * 1000;
 
 /* On Vercel, sub-path routing (chat.py/session) doesn't work — use ?action= param */
 const IS_VERCEL = window.location.hostname.includes('vercel.app');
 function chatUrl(action) {
   if (IS_VERCEL) return CHAT_API + '?action=' + action;
   return CHAT_API + '/' + action;
+}
+
+function appendChatQueryParam(url, key, value) {
+  const separator = url.includes('?') ? '&' : '?';
+  return url + separator + key + '=' + value;
 }
 
 const chatState = {
@@ -4266,9 +4287,10 @@ async function initChat() {
 
 async function pollMessages() {
   try {
+    pruneExpiredRenderedMessages();
     let url = chatUrl('messages');
     if (chatState.lastMsgTime) {
-      url += '?since=' + encodeURIComponent(chatState.lastMsgTime);
+      url = appendChatQueryParam(url, 'since', encodeURIComponent(chatState.lastMsgTime));
     }
     const res = await fetch(url);
     const msgs = await res.json();
@@ -4299,16 +4321,29 @@ function renderChatMessage(msg) {
   const container = document.getElementById('chatMessages');
   const isMine = msg.analyst === chatState.analyst;
   const timeStr = formatChatTime(msg.time);
+  const msgTimeMs = Date.parse(msg.time);
 
   const safeColor = /^#[0-9a-fA-F]{3,6}$/.test(msg.color) ? msg.color : '#666';
   const el = document.createElement('div');
   el.className = `chat-msg ${isMine ? 'mine' : 'other'}`;
+  if (!Number.isNaN(msgTimeMs)) el.dataset.msgTimeMs = String(msgTimeMs);
   el.innerHTML = `
     ${!isMine ? `<div class="chat-msg-sender" style="color:${safeColor}">${escHtml(msg.analyst)}</div>` : ''}
     <div class="chat-msg-bubble">${escHtml(msg.text)}</div>
     <div class="chat-msg-time">${timeStr}</div>
   `;
   container.appendChild(el);
+}
+
+function pruneExpiredRenderedMessages(nowMs = Date.now()) {
+  const cutoff = nowMs - CHAT_MESSAGE_TTL_MS;
+  const messages = document.querySelectorAll('#chatMessages .chat-msg[data-msg-time-ms]');
+  messages.forEach((node) => {
+    const msgTimeMs = Number(node.dataset.msgTimeMs || 0);
+    if (msgTimeMs > 0 && msgTimeMs < cutoff) {
+      node.remove();
+    }
+  });
 }
 
 function addSystemMessage(text) {
