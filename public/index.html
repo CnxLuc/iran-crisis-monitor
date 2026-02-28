@@ -258,6 +258,11 @@ button { cursor: pointer; font-family: inherit; }
 /* ============================================================
    TAB NAV
    ============================================================ */
+.tab-nav-wrapper {
+  position: sticky;
+  top: 60px;
+  z-index: 90;
+}
 .tab-nav {
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
@@ -266,12 +271,10 @@ button { cursor: pointer; font-family: inherit; }
   gap: 0;
   overflow-x: auto;
   scrollbar-width: none;
-  position: sticky;
-  top: 60px;
-  z-index: 90;
   box-shadow: 0 1px 0 var(--border);
 }
 .tab-nav::-webkit-scrollbar { display: none; }
+.tab-label-short { display: none; }
 .tab-btn {
   background: none;
   border: none;
@@ -316,7 +319,7 @@ button { cursor: pointer; font-family: inherit; }
    ============================================================ */
 .section-label {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   font-weight: 500;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -451,7 +454,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .ops-stat-label {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   letter-spacing: 0.1em;
   color: rgba(255,255,255,0.4);
   text-transform: uppercase;
@@ -479,7 +482,7 @@ button { cursor: pointer; font-family: inherit; }
   display: block;
   font-style: normal;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   color: rgba(255,255,255,0.35);
   margin-top: var(--sp-1);
   letter-spacing: 0.04em;
@@ -541,7 +544,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .sidebar-subtitle {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
   letter-spacing: 0.08em;
   margin-top: 2px;
@@ -605,7 +608,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .market-compact-vol {
   font-family: var(--font-mono);
-  font-size: 0.52rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -619,9 +622,10 @@ button { cursor: pointer; font-family: inherit; }
 @media (max-width: 768px) {
   .live-split {
     grid-template-columns: 1fr;
+    overflow: hidden;
   }
-  .live-news-col { order: 2; }
-  .live-sidebar { order: 1; position: static; }
+  .live-news-col { order: 1; min-width: 0; max-width: 100%; }
+  .live-sidebar { order: 2; position: static; }
 }
 
 /* ============================================================
@@ -692,7 +696,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .market-link {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   color: var(--blue-text);
   text-decoration: none;
   letter-spacing: 0.04em;
@@ -994,7 +998,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .force-subtitle {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   color: rgba(255,255,255,0.5);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1033,7 +1037,7 @@ button { cursor: pointer; font-family: inherit; }
 .asset-tag {
   display: inline-block;
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   padding: 1px 6px;
   border-radius: 3px;
   border: 1px solid;
@@ -1084,7 +1088,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .threat-label {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1217,7 +1221,7 @@ button { cursor: pointer; font-family: inherit; }
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   margin-bottom: 3px;
 }
 .probability-bar-row {
@@ -1533,7 +1537,7 @@ button { cursor: pointer; font-family: inherit; }
   background: var(--bg-raised);
   padding: var(--sp-3) var(--sp-4);
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -1629,7 +1633,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .analogue-verdict {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   font-weight: 600;
   margin-top: var(--sp-3);
   padding: 4px 10px;
@@ -1750,11 +1754,187 @@ button { cursor: pointer; font-family: inherit; }
   .header-divider { display: none; }
 }
 @media (max-width: 480px) {
+  html, body { overflow-x: clip; }
+
+  /* --- GRID COLLAPSES --- */
   .grid-23 { grid-template-columns: 1fr; }
   .market-indicator-row { grid-template-columns: 1fr 1fr; }
   .facts-grid { grid-template-columns: 1fr 1fr; }
   .proxy-grid { grid-template-columns: 1fr; }
   .analogue-grid { grid-template-columns: 1fr; }
+
+  /* --- HEADER: Compact for mobile --- */
+  .site-header {
+    height: auto;
+    min-height: 40px;
+    padding: var(--sp-2) var(--sp-3);
+    flex-wrap: wrap;
+    gap: var(--sp-1);
+  }
+  .header-logo { font-size: 0.85rem; }
+  .header-subtitle { display: none; }
+  .header-divider { display: none; }
+  .header-status { font-size: 0.65rem; gap: var(--sp-1); }
+  .header-status .pulse-dot { width: 6px; height: 6px; }
+  .header-right { gap: var(--sp-2); }
+  .header-timestamp { display: none; }
+  .theme-toggle {
+    padding: var(--sp-1) var(--sp-2);
+    font-size: 0.65rem;
+  }
+
+  /* --- TAB NAV: Sticky + scroll affordance --- */
+  .tab-nav-wrapper {
+    position: sticky;
+    top: 0;
+    z-index: 90;
+  }
+  .tab-nav {
+    gap: 0;
+    padding: 0 var(--sp-2);
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-left: var(--sp-2);
+  }
+  /* Tab nav gradient fade removed — all tabs fit at abbreviated labels */
+  .tab-btn {
+    padding: var(--sp-2) var(--sp-2);
+    font-size: 0.68rem;
+    min-height: 44px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .tab-num { display: none; }
+  .tab-label-full { display: none; }
+  .tab-label-short { display: inline; }
+
+  /* --- MAIN CONTENT: Tighter padding --- */
+  .main-content { padding: var(--sp-3) var(--sp-3) var(--sp-10); }
+
+  /* --- CARDS: Tighter padding --- */
+  .card { padding: var(--sp-4); }
+  .card[style*="padding: var(--sp-6)"] { padding: var(--sp-4) !important; }
+
+  /* --- OPS BANNER: Compact --- */
+  .ops-banner {
+    padding: var(--sp-3) var(--sp-4);
+    margin-bottom: var(--sp-4);
+  }
+  .ops-banner-header { gap: var(--sp-2); margin-bottom: var(--sp-3); padding-bottom: var(--sp-3); }
+  .ops-name { font-size: 0.92rem; }
+  .ops-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-3) var(--sp-3);
+  }
+  .ops-stats .ops-stat:last-child:nth-child(3n+1) {
+    grid-column: 2; /* center orphan in last row */
+  }
+  .ops-stat-label { font-size: 0.65rem; }
+  .ops-stat-value { font-size: 0.82rem; }
+  .ops-quote {
+    font-size: 0.78rem;
+    padding: var(--sp-2) var(--sp-3);
+    line-height: 1.5;
+  }
+
+  /* --- SECTION TITLES --- */
+  .section-title { font-size: 0.95rem; }
+  .section-label { font-size: 0.65rem; }
+
+  /* --- LONG-FORM TEXT READABILITY --- */
+  .card p + p { margin-top: var(--sp-4); }
+  .card ul, .card ol { padding-left: var(--sp-5); }
+  .card h3 { font-size: 0.95rem; margin-top: var(--sp-5); }
+  .card h4 { font-size: 0.85rem; }
+
+  /* --- TABLES: More compact on mobile --- */
+  table th {
+    font-size: 0.65rem;
+    padding: var(--sp-2) var(--sp-2);
+  }
+  table td {
+    font-size: 0.75rem;
+    padding: var(--sp-2) var(--sp-2);
+  }
+
+  /* --- MARKET CARDS --- */
+  .market-card { padding: var(--sp-4); }
+  .market-prob { font-size: 1.8rem; }
+  .market-question { font-size: 0.75rem; }
+
+  /* --- MINIMUM FONT SIZES: floor at 0.65rem (10.4px) --- */
+  .badge { font-size: 0.65rem; }
+  .expert-title { font-size: 0.65rem; }
+
+  /* --- CHART CONTAINERS --- */
+  .chart-container,
+  [class*="chart"] {
+    min-height: 180px;
+  }
+  .chart-container canvas {
+    min-height: 180px;
+  }
+
+  /* --- CARD HEADER: Wrap on mobile --- */
+  .card-header {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  /* --- HIDE DARK MODE TOGGLE ON MOBILE --- */
+  .theme-toggle { display: none; }
+
+  /* --- OSINT SOURCES: Collapse on mobile (override inline style) --- */
+  .osint-sources { display: none !important; }
+
+  /* --- NEWS ITEMS: Tighter padding --- */
+  .news-item { padding: var(--sp-3) var(--sp-3); }
+
+  /* --- FORCE TABLES: Horizontal scroll --- */
+  .force-panel {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .force-table { min-width: 340px; }
+
+  /* --- SCENARIO TABLES: Horizontal scroll --- */
+  .scenario-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* --- SCENARIO HEADERS: Larger touch targets --- */
+  .scenario-header {
+    padding: var(--sp-4) var(--sp-4);
+    min-height: 56px;
+  }
+  .scenario-prob-num { font-size: 1.3rem; }
+  .scenario-prob-label { font-size: 0.65rem; }
+
+  /* --- FONT FLOOR: Enforce 0.65rem minimum --- */
+  .ops-stat-label { font-size: 0.65rem; }
+  .sidebar-subtitle { font-size: 0.65rem; }
+  .news-item-time { font-size: 0.65rem; }
+  .chat-system-msg { font-size: 0.65rem; }
+
+  /* --- CONSISTENT SECTION SPACING --- */
+  .section-title {
+    margin-top: var(--sp-5);
+    margin-bottom: var(--sp-3);
+  }
+  .tab-panel > *:first-child .section-title,
+  .tab-panel > .section-title:first-child {
+    margin-top: 0;
+  }
+  .news-feed-header { margin-bottom: var(--sp-3); }
+  .sidebar-header { margin-bottom: var(--sp-3); }
+  .pdb-block { margin-bottom: var(--sp-5); }
+
+  /* --- BOTTOM PADDING: Clearance for chat widget --- */
+  .main-content {
+    padding-bottom: calc(var(--sp-10) + 52px);
+  }
 }
 
 /* ============================================================
@@ -1851,7 +2031,7 @@ button { cursor: pointer; font-family: inherit; }
   white-space: nowrap;
 }
 .chat-titlebar-online {
-  font-size: 0.58rem;
+  font-size: 0.65rem;
   color: rgba(255,255,255,0.45);
   letter-spacing: 0.03em;
   white-space: nowrap;
@@ -1941,7 +2121,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .chat-my-label {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
   margin-left: auto;
 }
@@ -1969,7 +2149,7 @@ button { cursor: pointer; font-family: inherit; }
 
 .chat-msg-sender {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -1992,7 +2172,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .chat-msg-time {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
 }
 .chat-msg.mine .chat-msg-time { text-align: right; }
@@ -2082,26 +2262,28 @@ button { cursor: pointer; font-family: inherit; }
 <!-- ============================================================
      TAB NAVIGATION
      ============================================================ -->
-<nav class="tab-nav" role="tablist">
-  <button class="tab-btn active" onclick="switchTab(0)" role="tab" aria-selected="true">
-    <span class="tab-num">01</span>Live Monitoring
-  </button>
-  <button class="tab-btn" onclick="switchTab(1)" role="tab">
-    <span class="tab-num">02</span>Situation Overview
-  </button>
-  <button class="tab-btn" onclick="switchTab(2)" role="tab">
-    <span class="tab-num">03</span>Forces &amp; Capabilities
-  </button>
-  <button class="tab-btn" onclick="switchTab(3)" role="tab">
-    <span class="tab-num">04</span>Scenarios &amp; Watch
-  </button>
-  <button class="tab-btn" onclick="switchTab(4)" role="tab">
-    <span class="tab-num">05</span>Economic Impact
-  </button>
-  <button class="tab-btn" onclick="switchTab(5)" role="tab">
-    <span class="tab-num">06</span>Analytical Frameworks
-  </button>
-</nav>
+<div class="tab-nav-wrapper">
+  <nav class="tab-nav" role="tablist">
+    <button class="tab-btn active" onclick="switchTab(0)" role="tab" aria-selected="true">
+      <span class="tab-num">01</span><span class="tab-label-full">Live Monitoring</span><span class="tab-label-short">Live</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab(1)" role="tab">
+      <span class="tab-num">02</span><span class="tab-label-full">Situation Overview</span><span class="tab-label-short">Situation</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab(2)" role="tab">
+      <span class="tab-num">03</span><span class="tab-label-full">Forces &amp; Capabilities</span><span class="tab-label-short">Forces</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab(3)" role="tab">
+      <span class="tab-num">04</span><span class="tab-label-full">Scenarios &amp; Watch</span><span class="tab-label-short">Scenarios</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab(4)" role="tab">
+      <span class="tab-num">05</span><span class="tab-label-full">Economic Impact</span><span class="tab-label-short">Economy</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab(5)" role="tab">
+      <span class="tab-num">06</span><span class="tab-label-full">Analytical Frameworks</span><span class="tab-label-short">Analysis</span>
+    </button>
+  </nav>
+</div>
 
 <!-- ============================================================
      MAIN CONTENT
@@ -2176,7 +2358,7 @@ button { cursor: pointer; font-family: inherit; }
           <span>Refreshing in <span class="refresh-timer data-num" id="refreshCountdown">60</span>s</span>
         </div>
       </div>
-      <div style="padding:0 0 var(--sp-2) 0; display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-family:var(--font-mono); font-size:0.6rem;">
+      <div class="osint-sources" style="padding:0 0 var(--sp-2) 0; display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-family:var(--font-mono); font-size:0.65rem;">
         <span style="color:var(--text-muted); letter-spacing:0.06em; text-transform:uppercase; font-weight:600;">X / OSINT:</span>
         <a href="https://x.com/AuroraIntel" target="_blank" rel="noopener" style="color:var(--blue-text); text-decoration:none;">@AuroraIntel</a>
         <a href="https://x.com/sentdefender" target="_blank" rel="noopener" style="color:var(--blue-text); text-decoration:none;">@sentdefender</a>
@@ -2201,7 +2383,7 @@ button { cursor: pointer; font-family: inherit; }
           <div class="sidebar-title">Polymarket Odds</div>
           <div class="sidebar-subtitle">CROWD PROBABILITY · LIVE</div>
         </div>
-
+      <div id="marketLastUpdated" class="badge badge-gray" style="font-size:0.65rem; white-space:nowrap; flex-shrink:0; margin-top:2px;">Loading...</div>
       </div>
       <div class="market-compact-list" id="marketGrid">
         <div class="loading-state">
@@ -2210,7 +2392,7 @@ button { cursor: pointer; font-family: inherit; }
         </div>
       </div>
       <div style="margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--border);">
-        <a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" style="font-family: var(--font-mono); font-size: 0.62rem; color: var(--text-muted); letter-spacing: 0.06em;">View all markets on Polymarket →</a>
+        <a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.06em;">View all markets on Polymarket →</a>
       </div>
     </div>
 
@@ -3512,6 +3694,11 @@ function switchTab(idx) {
     b.setAttribute('aria-selected', i === idx);
   });
   state.activeTab = idx;
+  // Mobile: scroll active tab into view and scroll to top
+  if (window.innerWidth <= 480) {
+    buttons[idx]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
 
 /* ============ SCENARIO TOGGLE ============ */
@@ -3571,16 +3758,16 @@ function renderNews(news) {
 
     return `<div class="news-item ${isBreaking ? 'breaking' : ''} ${isOsint ? 'osint' : ''}" style="animation-delay:${i * 0.04}s">
       <div class="news-item-header">
-        <span class="badge ${badgeClass}">${item.source}</span>
+        <span class="badge ${badgeClass}">${escHtml(item.source)}</span>
         ${tagBadge}
       </div>
       <div class="news-title">
-        <a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.title}</a>
+        <a href="${escHtml(item.url)}" target="_blank" rel="noopener noreferrer">${escHtml(item.title)}</a>
       </div>
-      <div class="news-excerpt">${item.excerpt}</div>
+      <div class="news-excerpt">${escHtml(item.excerpt)}</div>
       <div class="news-footer">
         <span class="news-time">${relativeTime(item.time)} · ${item.time.replace('T', ' ').substring(0,16)} GMT</span>
-        <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="text-xs font-mono" style="color: var(--blue-text);">Read →</a>
+        <a href="${escHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="text-xs font-mono" style="color: var(--blue-text);">Read →</a>
       </div>
     </div>`;
   }).join('');
@@ -3598,10 +3785,10 @@ function renderMarkets(markets) {
     const prob = m.outcomes && m.outcomes[0] ? m.outcomes[0].probability : 50;
     const probClass = prob >= 65 ? 'high' : prob >= 35 ? 'medium' : 'low';
     const color = palette[i % palette.length];
-    return `<a href="${m.url}" target="_blank" rel="noopener noreferrer" class="market-compact-card" style="--card-accent:${color};">
+    return `<a href="${escHtml(m.url)}" target="_blank" rel="noopener noreferrer" class="market-compact-card" style="--card-accent:${color};">
       <div class="market-compact-prob ${probClass} data-num">${prob.toFixed(1)}%</div>
       <div class="market-compact-info">
-        <div class="market-compact-question">${m.question}</div>
+        <div class="market-compact-question">${escHtml(m.question)}</div>
         <div class="market-compact-vol">${m.volumeFormatted || ''} vol · Polymarket</div>
       </div>
     </a>`;
@@ -3696,9 +3883,9 @@ function renderPmTrends(markets, oddsHistory) {
     const horizonHtml = horizonLabel
       ? `<span class="pm-trend-horizon">${horizonLabel}</span>`
       : '';
-    return `<a href="${m.url || 'https://polymarket.com'}" target="_blank" rel="noopener noreferrer" class="pm-trend-card" style="text-decoration:none;color:inherit;">
+    return `<a href="${escHtml(m.url || 'https://polymarket.com')}" target="_blank" rel="noopener noreferrer" class="pm-trend-card" style="text-decoration:none;color:inherit;">
       <div class="pm-trend-header">
-        <div class="pm-trend-question">${m.question}</div>
+        <div class="pm-trend-question">${escHtml(m.question)}</div>
         <div class="pm-trend-prob ${probClass}">${prob.toFixed(1)}%</div>
       </div>
       <div class="pm-trend-meta">
@@ -3969,6 +4156,26 @@ document.addEventListener('DOMContentLoaded', () => {
   // Open first scenario on load for discoverability
   const firstScenario = document.querySelector('.scenario-header');
   if (firstScenario) toggleScenario(firstScenario);
+
+  // Mobile: set tab-nav-wrapper sticky top dynamically based on header height
+  if (window.innerWidth <= 480) {
+    const header = document.querySelector('.site-header');
+    const tabNavWrapper = document.querySelector('.tab-nav-wrapper');
+    if (header && tabNavWrapper) {
+      const setTabTop = () => {
+        tabNavWrapper.style.top = header.offsetHeight + 'px';
+      };
+      setTabTop();
+      window.addEventListener('resize', setTabTop);
+      new ResizeObserver(setTabTop).observe(header);
+    }
+
+    // Scroll active tab into view
+    const activeTab = document.querySelector('.tab-btn.active');
+    if (activeTab) {
+      activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }
 });
 </script>
 
@@ -4116,11 +4323,12 @@ function renderChatMessage(msg) {
   const timeStr = formatChatTime(msg.time);
   const msgTimeMs = Date.parse(msg.time);
 
+  const safeColor = /^#[0-9a-fA-F]{3,6}$/.test(msg.color) ? msg.color : '#666';
   const el = document.createElement('div');
   el.className = `chat-msg ${isMine ? 'mine' : 'other'}`;
   if (!Number.isNaN(msgTimeMs)) el.dataset.msgTimeMs = String(msgTimeMs);
   el.innerHTML = `
-    ${!isMine ? `<div class="chat-msg-sender" style="color:${msg.color || '#666'}">${escHtml(msg.analyst)}</div>` : ''}
+    ${!isMine ? `<div class="chat-msg-sender" style="color:${safeColor}">${escHtml(msg.analyst)}</div>` : ''}
     <div class="chat-msg-bubble">${escHtml(msg.text)}</div>
     <div class="chat-msg-time">${timeStr}</div>
   `;
