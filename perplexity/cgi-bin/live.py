@@ -66,6 +66,139 @@ IRAN_KEYWORDS = [
     "rouhani", "raisi", "pezeshkian", "iran president", "revolutionary guard"
 ]
 
+IRRELEVANT_MARKET_TITLE_PATTERNS = [
+    r"\.\.\.\?",          # unresolved placeholder titles, e.g. "US next strikes Iran on...?"
+    r"…\?",               # same as above with unicode ellipsis
+    r"\bover__\b",        # malformed market templates
+]
+
+LLM_RELEVANCE_SYSTEM_PROMPT = (
+    "You are selecting prediction markets for an Iran crisis dashboard. "
+    "Prioritize strategic, decision-relevant markets about Iran conflict escalation, "
+    "regional spillover, regime stability, and macro-energy impacts. "
+    "Reject malformed placeholder markets and low-signal date-picker trivia. "
+    "Return only a comma-separated list of item numbers."
+)
+
+def is_relevant_market_title(title):
+    """Return True for Iran-relevant, non-placeholder market titles."""
+    if not title:
+        return False
+    lowered = title.strip().lower()
+    if not lowered:
+        return False
+    if not any(kw in lowered for kw in IRAN_KEYWORDS):
+        return False
+    return not any(re.search(pattern, lowered) for pattern in IRRELEVANT_MARKET_TITLE_PATTERNS)
+
+def extract_ranked_ids(text, max_count, max_index):
+    """Extract ranked 1-based item ids from free-form model output."""
+    if not text:
+        return []
+    ranked = []
+    seen = set()
+    for tok in re.findall(r"\d+", str(text)):
+        idx = int(tok)
+        if 1 <= idx <= max_index and idx not in seen:
+            ranked.append(idx)
+            seen.add(idx)
+            if len(ranked) >= max_count:
+                break
+    return ranked
+
+def extract_anthropic_message_text(data):
+    """Extract concatenated text from an Anthropic Messages API response."""
+    if not isinstance(data, dict):
+        return ""
+    content = data.get("content")
+    if not isinstance(content, list):
+        return ""
+    parts = []
+    for block in content:
+        if isinstance(block, dict) and block.get("type") == "text" and block.get("text"):
+            parts.append(str(block.get("text")))
+    return " ".join(parts).strip()
+
+def llm_rank_market_ids(markets, max_keep=6, timeout=6):
+    """
+    Optionally ask an LLM to pick the most relevant markets.
+    Returns ranked 1-based ids, or [] on any failure.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key or not markets:
+        return []
+
+    model = os.environ.get("ANTHROPIC_MARKET_MODEL", "claude-sonnet-4-6")
+    items = []
+    for i, m in enumerate(markets, start=1):
+        question = (m.get("question") or "").strip()
+        resolution = m.get("resolutionDate") or m.get("endDate") or "unknown"
+        yes_prob = next(
+            (o.get("probability") for o in m.get("outcomes", []) if str(o.get("label", "")).lower() == "yes"),
+            m.get("outcomes", [{}])[0].get("probability", "n/a") if m.get("outcomes") else "n/a"
+        )
+        vol = m.get("volumeFormatted") or "n/a"
+        items.append(f"{i}. {question} | resolves {resolution} | yes {yes_prob}% | volume {vol}")
+
+    user_prompt = (
+        f"Pick up to {max_keep} items that are most relevant for crisis monitoring.\n"
+        "Return only item numbers, comma-separated (example: 3,1,7,2).\n\n"
+        + "\n".join(items)
+    )
+    payload = {
+        "model": model,
+        "temperature": 0,
+        "max_tokens": 80,
+        "system": LLM_RELEVANCE_SYSTEM_PROMPT,
+        "messages": [{"role": "user", "content": user_prompt}]
+    }
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+            "User-Agent": "IranCrisisMonitor/1.0"
+        },
+        method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+        data = json.loads(raw)
+        content = extract_anthropic_message_text(data)
+        return extract_ranked_ids(content, max_keep, len(markets))
+    except Exception:
+        return []
+
+def select_markets_for_dashboard(markets, max_keep=6):
+    """Select markets for UI cards, optionally LLM-ranked, deterministic fallback."""
+    if not markets:
+        return []
+    candidate_pool = markets[:20]  # bound token/cost for LLM ranking
+    ranked_ids = llm_rank_market_ids(candidate_pool, max_keep=max_keep)
+    if not ranked_ids:
+        return candidate_pool[:max_keep]
+
+    selected = []
+    used = set()
+    for one_based in ranked_ids:
+        idx = one_based - 1
+        if 0 <= idx < len(candidate_pool) and idx not in used:
+            selected.append(candidate_pool[idx])
+            used.add(idx)
+            if len(selected) >= max_keep:
+                return selected
+
+    for idx, m in enumerate(candidate_pool):
+        if idx in used:
+            continue
+        selected.append(m)
+        if len(selected) >= max_keep:
+            break
+    return selected
+
 # ---------------------------------------------------------------------------
 # RSS parsing — handles both standard RSS (<item>) and Atom (<entry>)
 # ---------------------------------------------------------------------------
@@ -295,11 +428,18 @@ def get_polymarket_data():
             question = m.get("question", "") or m.get("title", "")
             if not question:
                 continue
+            if not is_relevant_market_title(question):
+                continue
             outcomes_raw = m.get("outcomePrices") or []
             outcomes_labels = m.get("outcomes") or []
             volume = float(m.get("volumeNum") or m.get("volume") or 0)
             slug = m.get("slug") or m.get("id") or ""
             market_url = f"https://polymarket.com/event/{slug}" if slug else "https://polymarket.com"
+            resolution_date = (
+                m.get("endDate")
+                or m.get("endDateIso")
+                or m.get("endDateISO")
+            )
 
             outcomes = []
             if outcomes_raw and outcomes_labels:
@@ -346,6 +486,7 @@ def get_polymarket_data():
 
             markets_out.append({
                 "question": question[:80],
+                "resolutionDate": resolution_date,
                 "volume": int(volume),
                 "volumeFormatted": vol_fmt,
                 "outcomes": outcomes,
@@ -364,9 +505,9 @@ def get_polymarket_data():
             seen.add(m["question"])
             deduped.append(m)
 
-    # Sort by volume descending, take top 6
+    # Sort by volume descending, then select top dashboard set
     deduped.sort(key=lambda x: x["volume"], reverse=True)
-    top_markets = deduped[:6]
+    top_markets = select_markets_for_dashboard(deduped, max_keep=6)
 
     # Fetch real CLOB price history for top 6 markets (sequential to respect 30s timeout)
     for m in top_markets:
@@ -421,12 +562,12 @@ def fallback_markets():
         return {label: pts}
 
     markets = [
-        {"question": "Will Iran and the US reach a ceasefire in March 2026?", "volume": 2840000, "volumeFormatted": "$2.8M", "outcomes": [{"label": "Yes", "probability": 38.5}, {"label": "No", "probability": 61.5}], "url": "https://polymarket.com/event/iran-us-ceasefire-march-2026"},
-        {"question": "Will Iran close the Strait of Hormuz in 2026?", "volume": 1920000, "volumeFormatted": "$1.9M", "outcomes": [{"label": "Yes", "probability": 22.3}, {"label": "No", "probability": 77.7}], "url": "https://polymarket.com/event/hormuz-closure-2026"},
-        {"question": "Will Iran test a nuclear device in 2026?", "volume": 3100000, "volumeFormatted": "$3.1M", "outcomes": [{"label": "Yes", "probability": 12.7}, {"label": "No", "probability": 87.3}], "url": "https://polymarket.com/event/iran-nuclear-test-2026"},
-        {"question": "Will Iranian regime fall by end of 2026?", "volume": 4250000, "volumeFormatted": "$4.3M", "outcomes": [{"label": "Yes", "probability": 29.4}, {"label": "No", "probability": 70.6}], "url": "https://polymarket.com/event/iran-regime-change-2026"},
-        {"question": "Will oil exceed $100 by April 2026?", "volume": 5600000, "volumeFormatted": "$5.6M", "outcomes": [{"label": "Yes", "probability": 41.2}, {"label": "No", "probability": 58.8}], "url": "https://polymarket.com/event/oil-100-april-2026"},
-        {"question": "Will Hezbollah re-enter the war in 2026?", "volume": 870000, "volumeFormatted": "$870K", "outcomes": [{"label": "Yes", "probability": 31.8}, {"label": "No", "probability": 68.2}], "url": "https://polymarket.com/event/hezbollah-reenter-2026"},
+        {"question": "Will Iran and the US reach a ceasefire in March 2026?", "resolutionDate": "2026-03-31T23:59:59Z", "volume": 2840000, "volumeFormatted": "$2.8M", "outcomes": [{"label": "Yes", "probability": 38.5}, {"label": "No", "probability": 61.5}], "url": "https://polymarket.com/event/iran-us-ceasefire-march-2026"},
+        {"question": "Will Iran close the Strait of Hormuz in 2026?", "resolutionDate": "2026-12-31T23:59:59Z", "volume": 1920000, "volumeFormatted": "$1.9M", "outcomes": [{"label": "Yes", "probability": 22.3}, {"label": "No", "probability": 77.7}], "url": "https://polymarket.com/event/hormuz-closure-2026"},
+        {"question": "Will Iran test a nuclear device in 2026?", "resolutionDate": "2026-12-31T23:59:59Z", "volume": 3100000, "volumeFormatted": "$3.1M", "outcomes": [{"label": "Yes", "probability": 12.7}, {"label": "No", "probability": 87.3}], "url": "https://polymarket.com/event/iran-nuclear-test-2026"},
+        {"question": "Will Iranian regime fall by end of 2026?", "resolutionDate": "2026-12-31T23:59:59Z", "volume": 4250000, "volumeFormatted": "$4.3M", "outcomes": [{"label": "Yes", "probability": 29.4}, {"label": "No", "probability": 70.6}], "url": "https://polymarket.com/event/iran-regime-change-2026"},
+        {"question": "Will oil exceed $100 by April 2026?", "resolutionDate": "2026-04-30T23:59:59Z", "volume": 5600000, "volumeFormatted": "$5.6M", "outcomes": [{"label": "Yes", "probability": 41.2}, {"label": "No", "probability": 58.8}], "url": "https://polymarket.com/event/oil-100-april-2026"},
+        {"question": "Will Hezbollah re-enter the war in 2026?", "resolutionDate": "2026-12-31T23:59:59Z", "volume": 870000, "volumeFormatted": "$870K", "outcomes": [{"label": "Yes", "probability": 31.8}, {"label": "No", "probability": 68.2}], "url": "https://polymarket.com/event/hezbollah-reenter-2026"},
     ]
     history = {}
     for m in markets:
