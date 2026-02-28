@@ -81,7 +81,7 @@ test('marketDisplayQuestion expands ellipsis titles with non-binary top outcome 
 
 test('cards use display question helper and resolve date metadata suffix', () => {
   assert.equal(
-    html.includes('${marketDisplayQuestion(m)}'),
+    html.includes('${escHtml(marketDisplayQuestion(m))}'),
     true,
     'market cards should render marketDisplayQuestion(m)'
   );
