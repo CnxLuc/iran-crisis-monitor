@@ -394,13 +394,28 @@ def parse_llm_relevant_indices(raw_text, total_count):
     return indices
 
 
-def filter_x_items_with_llm(items):
+def filter_x_items_with_llm(items, return_meta=False):
+    llm_meta = {
+        "inputCount": len(items or []),
+        "outputCount": len(items or []),
+        "llmEnabled": False,
+        "llmApplied": False,
+        "result": "not_run",
+    }
     api_key = os.getenv(ANTHROPIC_API_KEY_ENV, "").strip()
-    if not items or not api_key:
-        return items
+    if not items:
+        llm_meta["result"] = "no_items"
+        return (items, llm_meta) if return_meta else items
+    if not api_key:
+        llm_meta["result"] = "no_api_key"
+        return (items, llm_meta) if return_meta else items
+
+    llm_meta["llmEnabled"] = True
+    llm_meta["llmApplied"] = True
 
     prompt = build_llm_relevance_prompt(items)
     model = os.getenv(ANTHROPIC_MODEL_ENV, ANTHROPIC_DEFAULT_MODEL).strip() or ANTHROPIC_DEFAULT_MODEL
+    llm_meta["model"] = model
     payload = {
         "model": model,
         "max_tokens": 120,
@@ -419,7 +434,8 @@ def filter_x_items_with_llm(items):
         data=json.dumps(payload).encode("utf-8"),
     )
     if not raw:
-        return items
+        llm_meta["result"] = "request_failed_passthrough"
+        return (items, llm_meta) if return_meta else items
 
     try:
         response = json.loads(raw)
@@ -430,28 +446,52 @@ def filter_x_items_with_llm(items):
             if isinstance(block, dict) and block.get("type") == "text"
         ).strip()
     except Exception:
-        return items
+        llm_meta["result"] = "parse_failed_passthrough"
+        return (items, llm_meta) if return_meta else items
 
     indices = parse_llm_relevant_indices(llm_text, len(items))
     if not indices and llm_text.upper() == "NONE":
-        return []
+        llm_meta["outputCount"] = 0
+        llm_meta["result"] = "filtered_none"
+        return ([], llm_meta) if return_meta else []
     if not indices:
-        return items
+        llm_meta["result"] = "unparseable_passthrough"
+        return (items, llm_meta) if return_meta else items
 
-    return [items[idx] for idx in indices]
+    filtered = [items[idx] for idx in indices]
+    llm_meta["outputCount"] = len(filtered)
+    llm_meta["result"] = "filtered_indices"
+    return (filtered, llm_meta) if return_meta else filtered
 
 
-def fetch_x_source_items(now=None):
+def fetch_x_source_items(now=None, return_debug=False):
+    debug = {
+        "xEnabled": False,
+        "xFetched": 0,
+        "xUsers": 0,
+        "xPassedScore": 0,
+        "xSelectedBeforeLlm": 0,
+        "xAfterLlm": 0,
+        "xDroppedByLlm": 0,
+        "xLlm": {"result": "not_run"},
+        "xStatus": "not_run",
+    }
+
     token = os.getenv(X_BEARER_TOKEN_ENV, "").strip()
     if not token:
-        return []
+        debug["xStatus"] = "no_x_token"
+        return ([], debug) if return_debug else []
+    debug["xEnabled"] = True
 
     query = build_x_recent_search_query()
     payload = fetch_x_recent_search(token, query, max_results=X_MAX_RESULTS)
     posts = payload.get("data") or []
     users = (payload.get("includes") or {}).get("users") or []
+    debug["xFetched"] = len(posts)
+    debug["xUsers"] = len(users)
     if not posts or not users:
-        return []
+        debug["xStatus"] = "no_posts_or_users"
+        return ([], debug) if return_debug else []
 
     user_by_id = {str(user.get("id", "")): user for user in users}
     candidates = []
@@ -466,6 +506,7 @@ def fetch_x_source_items(now=None):
         )
         if not accepted:
             continue
+        debug["xPassedScore"] += 1
 
         author = user_by_id.get(str(post.get("author_id", "")), {})
         username = (author.get("username") or "").lower()
@@ -492,7 +533,13 @@ def fetch_x_source_items(now=None):
         if len(selected) >= X_MAX_ITEMS:
             break
 
-    return filter_x_items_with_llm(selected)
+    debug["xSelectedBeforeLlm"] = len(selected)
+    selected_after_llm, llm_meta = filter_x_items_with_llm(selected, return_meta=True)
+    debug["xLlm"] = llm_meta
+    debug["xAfterLlm"] = len(selected_after_llm)
+    debug["xDroppedByLlm"] = len(selected) - len(selected_after_llm)
+    debug["xStatus"] = "ok"
+    return (selected_after_llm, debug) if return_debug else selected_after_llm
 
 
 def _news_dedupe_key(item):
@@ -520,10 +567,18 @@ def merge_and_dedupe_news_items(rss_items, x_items, limit=25):
     return unique[:limit]
 
 
-def fetch_news_feeds():
+def fetch_news_feeds(return_debug=False):
     rss_items = fetch_rss_news_feeds()
-    x_items = fetch_x_source_items()
-    return merge_and_dedupe_news_items(rss_items, x_items, limit=25)
+    x_items, x_debug = fetch_x_source_items(return_debug=True)
+    merged = merge_and_dedupe_news_items(rss_items, x_items, limit=25)
+
+    if return_debug:
+        return merged, {
+            "rssCount": len(rss_items),
+            "mergedCount": len(merged),
+            "x": x_debug,
+        }
+    return merged
 
 
 # ---------------------------------------------------------------------------
@@ -665,7 +720,7 @@ class handler(BaseHTTPRequestHandler):
         now = datetime.now(timezone.utc)
 
         # Fetch news
-        news = fetch_news_feeds()
+        news, news_debug = fetch_news_feeds(return_debug=True)
 
         # Fetch markets
         markets = fetch_polymarket()
@@ -684,6 +739,9 @@ class handler(BaseHTTPRequestHandler):
             "oddsHistory": odds_history,
             "meta": {
                 "newsCount": len(news),
+                "rssCount": news_debug.get("rssCount", 0),
+                "mergedCount": news_debug.get("mergedCount", len(news)),
+                "xDebug": news_debug.get("x", {}),
                 "marketsCount": len(markets_out),
                 "historyPoints": sum(
                     len(list(v.values())[0]) if v else 0

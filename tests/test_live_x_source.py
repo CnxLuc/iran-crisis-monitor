@@ -122,12 +122,49 @@ class LiveXSourceTests(unittest.TestCase):
         ]
 
         with patch.object(live, "fetch_rss_news_feeds", return_value=rss_items):
-            with patch.object(live, "fetch_x_source_items", return_value=x_items):
+            with patch.object(
+                live,
+                "fetch_x_source_items",
+                return_value=(x_items, {"xStatus": "ok"}),
+            ):
                 merged = live.fetch_news_feeds()
 
         self.assertEqual(len(merged), 2)
         self.assertEqual(merged[0]["id"], "x-1")
         self.assertEqual(merged[1]["id"], "rss-1")
+
+    def test_fetch_news_feeds_return_debug_includes_x_counters(self):
+        rss_items = [
+            {"id": "rss-1", "title": "A", "time": "2026-02-28T09:00:00Z", "url": "https://a"}
+        ]
+        x_items = [
+            {"id": "x-1", "title": "B", "time": "2026-02-28T10:00:00Z", "url": "https://b"}
+        ]
+        x_debug = {
+            "xEnabled": True,
+            "xFetched": 4,
+            "xPassedScore": 2,
+            "xSelectedBeforeLlm": 1,
+            "xAfterLlm": 1,
+            "xDroppedByLlm": 0,
+            "xStatus": "ok",
+        }
+        with patch.object(live, "fetch_rss_news_feeds", return_value=rss_items):
+            with patch.object(live, "fetch_x_source_items", return_value=(x_items, x_debug)):
+                merged, debug = live.fetch_news_feeds(return_debug=True)
+
+        self.assertEqual(len(merged), 2)
+        self.assertEqual(debug["rssCount"], 1)
+        self.assertEqual(debug["mergedCount"], 2)
+        self.assertEqual(debug["x"]["xFetched"], 4)
+
+    def test_fetch_x_source_items_return_debug_no_token(self):
+        with patch.dict(os.environ, {}, clear=True):
+            items, debug = live.fetch_x_source_items(return_debug=True)
+
+        self.assertEqual(items, [])
+        self.assertEqual(debug["xStatus"], "no_x_token")
+        self.assertFalse(debug["xEnabled"])
 
     def test_parse_llm_relevant_indices_parses_numbers_and_dedupes(self):
         parsed = live.parse_llm_relevant_indices("2, 1, 2, 9, nope", total_count=3)
