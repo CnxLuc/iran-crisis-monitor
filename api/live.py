@@ -37,6 +37,139 @@ IRAN_KEYWORDS = [
     "rouhani", "raisi", "pezeshkian", "iran president", "revolutionary guard"
 ]
 
+IRRELEVANT_MARKET_TITLE_PATTERNS = [
+    r"\.\.\.\?",          # unresolved placeholder titles, e.g. "US next strikes Iran on...?"
+    r"…\?",               # same as above with unicode ellipsis
+    r"\bover__\b",        # malformed market templates
+]
+
+LLM_RELEVANCE_SYSTEM_PROMPT = (
+    "You are selecting prediction markets for an Iran crisis dashboard. "
+    "Prioritize strategic, decision-relevant markets about Iran conflict escalation, "
+    "regional spillover, regime stability, and macro-energy impacts. "
+    "Reject malformed placeholder markets and low-signal date-picker trivia. "
+    "Return only a comma-separated list of item numbers."
+)
+
+def is_relevant_market_title(title):
+    """Return True for Iran-relevant, non-placeholder market titles."""
+    if not title:
+        return False
+    lowered = title.strip().lower()
+    if not lowered:
+        return False
+    if not any(kw in lowered for kw in IRAN_KEYWORDS):
+        return False
+    return not any(re.search(pattern, lowered) for pattern in IRRELEVANT_MARKET_TITLE_PATTERNS)
+
+def extract_ranked_ids(text, max_count, max_index):
+    """Extract ranked 1-based item ids from free-form model output."""
+    if not text:
+        return []
+    ranked = []
+    seen = set()
+    for tok in re.findall(r"\d+", str(text)):
+        idx = int(tok)
+        if 1 <= idx <= max_index and idx not in seen:
+            ranked.append(idx)
+            seen.add(idx)
+            if len(ranked) >= max_count:
+                break
+    return ranked
+
+def extract_anthropic_message_text(data):
+    """Extract concatenated text from an Anthropic Messages API response."""
+    if not isinstance(data, dict):
+        return ""
+    content = data.get("content")
+    if not isinstance(content, list):
+        return ""
+    parts = []
+    for block in content:
+        if isinstance(block, dict) and block.get("type") == "text" and block.get("text"):
+            parts.append(str(block.get("text")))
+    return " ".join(parts).strip()
+
+def llm_rank_market_ids(markets, max_keep=6, timeout=6):
+    """
+    Optionally ask an LLM to pick the most relevant markets.
+    Returns ranked 1-based ids, or [] on any failure.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key or not markets:
+        return []
+
+    model = os.environ.get("ANTHROPIC_MARKET_MODEL", "claude-sonnet-4-6")
+    items = []
+    for i, m in enumerate(markets, start=1):
+        question = (m.get("question") or "").strip()
+        resolution = m.get("resolutionDate") or m.get("endDate") or "unknown"
+        yes_prob = next(
+            (o.get("probability") for o in m.get("outcomes", []) if str(o.get("label", "")).lower() == "yes"),
+            m.get("outcomes", [{}])[0].get("probability", "n/a") if m.get("outcomes") else "n/a"
+        )
+        vol = m.get("volumeFormatted") or "n/a"
+        items.append(f"{i}. {question} | resolves {resolution} | yes {yes_prob}% | volume {vol}")
+
+    user_prompt = (
+        f"Pick up to {max_keep} items that are most relevant for crisis monitoring.\n"
+        "Return only item numbers, comma-separated (example: 3,1,7,2).\n\n"
+        + "\n".join(items)
+    )
+    payload = {
+        "model": model,
+        "temperature": 0,
+        "max_tokens": 80,
+        "system": LLM_RELEVANCE_SYSTEM_PROMPT,
+        "messages": [{"role": "user", "content": user_prompt}]
+    }
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+            "User-Agent": "IranCrisisMonitor/1.0"
+        },
+        method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+        data = json.loads(raw)
+        content = extract_anthropic_message_text(data)
+        return extract_ranked_ids(content, max_keep, len(markets))
+    except Exception:
+        return []
+
+def select_markets_for_dashboard(markets, max_keep=6):
+    """Select markets for UI cards, optionally LLM-ranked, deterministic fallback."""
+    if not markets:
+        return []
+    candidate_pool = markets[:20]  # bound token/cost for LLM ranking
+    ranked_ids = llm_rank_market_ids(candidate_pool, max_keep=max_keep)
+    if not ranked_ids:
+        return candidate_pool[:max_keep]
+
+    selected = []
+    used = set()
+    for one_based in ranked_ids:
+        idx = one_based - 1
+        if 0 <= idx < len(candidate_pool) and idx not in used:
+            selected.append(candidate_pool[idx])
+            used.add(idx)
+            if len(selected) >= max_keep:
+                return selected
+
+    for idx, m in enumerate(candidate_pool):
+        if idx in used:
+            continue
+        selected.append(m)
+        if len(selected) >= max_keep:
+            break
+    return selected
+
 # ---------------------------------------------------------------------------
 # Date normalization
 # ---------------------------------------------------------------------------
@@ -243,9 +376,14 @@ def fetch_polymarket():
         events = json.loads(data)
         for event in events:
             title = event.get("title", "")
-            if not any(kw in title.lower() for kw in IRAN_KEYWORDS):
+            if not is_relevant_market_title(title):
                 continue
             markets_list = event.get("markets", [])
+            resolution_date = (
+                event.get("endDate")
+                or event.get("endDateIso")
+                or event.get("endDateISO")
+            )
             total_volume = 0
             outcomes = []
             active_mkts = [m for m in markets_list if not m.get("closed", False)]
@@ -281,6 +419,7 @@ def fetch_polymarket():
                 vol_str = f"${total_volume/1e6:.1f}M" if total_volume >= 1e6 else f"${total_volume/1e3:.0f}K"
                 markets.append({
                     "question": title,
+                    "resolutionDate": resolution_date,
                     "volume": total_volume,
                     "volumeFormatted": vol_str,
                     "outcomes": outcomes,
@@ -347,12 +486,10 @@ class handler(BaseHTTPRequestHandler):
 
         # Fetch markets
         markets = fetch_polymarket()
+        markets_out = select_markets_for_dashboard(markets, max_keep=6)
 
-        # Fetch real price history for top 6 markets
-        odds_history = build_odds_history(markets)
-
-        # Limit markets output to top 6 (already sorted by volume)
-        markets_out = markets[:6]
+        # Fetch real price history for selected markets
+        odds_history = build_odds_history(markets_out)
 
         response = {
             "timestamp": now.isoformat(),

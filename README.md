@@ -52,6 +52,8 @@ Notes:
 - `dev-setup.sh` only overwrites `public/index.html` when it still looks like the placeholder.
 - If you already changed `public/index.html`, it will skip by default.
 - Use `./scripts/dev-setup.sh --force` only when you intentionally want to replace your local HTML.
+- In a git worktree, copy `.vercel/project.json` from another linked worktree once to avoid creating a new Vercel project:
+  `mkdir -p .vercel && cp ../<other-worktree>/.vercel/project.json .vercel/project.json`
 
 ## Design
 
