@@ -1,25 +1,31 @@
 """Vercel serverless function for Iran Crisis Monitor live data with history tracking."""
 import json
 import os
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import re
 import hashlib
 import random
 from http.server import BaseHTTPRequestHandler
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def fetch_url(url, timeout=8):
-    req = urllib.request.Request(url, headers={
+
+def fetch_url(url, timeout=8, headers=None, data=None):
+    request_headers = {
         "User-Agent": "IranCrisisMonitor/1.0",
-        "Accept": "application/json, application/xml, text/xml, */*"
-    })
+        "Accept": "application/json, application/xml, text/xml, */*",
+    }
+    if headers:
+        request_headers.update(headers)
+    req = urllib.request.Request(url, headers=request_headers, data=data)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.read().decode("utf-8", errors="replace")
     except Exception:
         return None
+
 
 # ---------------------------------------------------------------------------
 # Iran-related keywords for filtering
@@ -34,8 +40,51 @@ IRAN_KEYWORDS = [
     "cruise missile iran", "ballistic missile iran", "irgc quds",
     "hezbollah attack", "strait of hormuz", "persian gulf war",
     "iran sanctions", "iran deal", "jcpoa", "enrichment", "centrifuge",
-    "rouhani", "raisi", "pezeshkian", "iran president", "revolutionary guard"
+    "rouhani", "raisi", "pezeshkian", "iran president", "revolutionary guard",
 ]
+
+
+# ---------------------------------------------------------------------------
+# X API source configuration
+# ---------------------------------------------------------------------------
+X_BEARER_TOKEN_ENV = "X_BEARER_TOKEN"
+X_ALLOWED_ACCOUNTS = [
+    "auroraintel",
+    "sentdefender",
+    "intelcrab",
+    "faytuks",
+    "loaboringwar",
+]
+X_ACCOUNT_WEIGHTS = {
+    "auroraintel": 1.25,
+    "sentdefender": 1.15,
+    "intelcrab": 1.05,
+    "faytuks": 1.0,
+    "loaboringwar": 1.0,
+}
+X_QUERY_KEYWORDS = [
+    "iran",
+    "tehran",
+    "irgc",
+    "hormuz",
+    "strait of hormuz",
+    "nuclear",
+    "hezbollah",
+    "israel",
+    "us",
+]
+X_MAX_RESULTS = 40
+X_MAX_ITEMS = 6
+X_MAX_PER_ACCOUNT = 2
+X_MAX_AGE_HOURS = 12
+X_MIN_TEXT_LENGTH = 40
+X_MIN_ENGAGEMENT = 12
+X_MIN_SCORE = 22
+ANTHROPIC_API_KEY_ENV = "ANTHROPIC_API_KEY"
+ANTHROPIC_MODEL_ENV = "ANTHROPIC_MODEL"
+ANTHROPIC_DEFAULT_MODEL = "claude-3-5-haiku-latest"
+ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
+
 
 # ---------------------------------------------------------------------------
 # Date normalization
@@ -44,9 +93,19 @@ def normalize_date(date_str):
     """Convert various date formats to ISO 8601 UTC string."""
     if not date_str:
         return None
-    if re.match(r'\d{4}-\d{2}-\d{2}T', date_str):
-        return date_str[:20].rstrip('T') + 'Z'
-    import datetime as dt_module
+
+    normalized = date_str.strip()
+
+    # ISO 8601 (with or without milliseconds / timezone offset)
+    iso_candidate = normalized.replace("Z", "+00:00")
+    try:
+        dt_obj = datetime.fromisoformat(iso_candidate)
+        if dt_obj.tzinfo:
+            dt_obj = dt_obj.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        pass
+
     formats = [
         "%a, %d %b %Y %H:%M:%S %z",
         "%a, %d %b %Y %H:%M:%S %Z",
@@ -56,13 +115,14 @@ def normalize_date(date_str):
     ]
     for fmt in formats:
         try:
-            d = dt_module.datetime.strptime(date_str.strip(), fmt)
+            d = datetime.strptime(normalized, fmt)
             if d.tzinfo:
-                d = d.astimezone(dt_module.timezone.utc).replace(tzinfo=None)
+                d = d.astimezone(timezone.utc).replace(tzinfo=None)
             return d.strftime("%Y-%m-%dT%H:%M:%SZ")
         except ValueError:
             continue
     return None
+
 
 # ---------------------------------------------------------------------------
 # RSS parsing - handles both standard RSS (<item>) and Atom (<entry>)
@@ -87,23 +147,23 @@ def parse_rss(xml_text, source_name, tag_type="breaking", max_items=10):
                 if t is not None and t.text:
                     title = t.text.strip()
             # Link
-            l = entry.find("link")
-            if l is not None and l.text and l.text.strip():
-                link = l.text.strip()
-            elif l is not None and l.get("href"):
-                link = l.get("href")
+            link_node = entry.find("link")
+            if link_node is not None and link_node.text and link_node.text.strip():
+                link = link_node.text.strip()
+            elif link_node is not None and link_node.get("href"):
+                link = link_node.get("href")
             if not link:
-                l = entry.find("{http://www.w3.org/2005/Atom}link")
-                if l is not None:
-                    link = l.get("href", "")
+                atom_link_node = entry.find("{http://www.w3.org/2005/Atom}link")
+                if atom_link_node is not None:
+                    link = atom_link_node.get("href", "")
             # Description / excerpt
             d = entry.find("description")
             if d is not None and d.text:
-                desc = re.sub(r'<[^>]+>', '', d.text).strip()[:200]
+                desc = re.sub(r"<[^>]+>", "", d.text).strip()[:200]
             if not desc:
                 s = entry.find("{http://www.w3.org/2005/Atom}summary")
                 if s is not None and s.text:
-                    desc = re.sub(r'<[^>]+>', '', s.text).strip()[:200]
+                    desc = re.sub(r"<[^>]+>", "", s.text).strip()[:200]
             # Published date
             p = entry.find("pubDate")
             if p is not None and p.text:
@@ -129,15 +189,13 @@ def parse_rss(xml_text, source_name, tag_type="breaking", max_items=10):
                     "excerpt": desc[:180],
                     "url": link,
                     "time": iso_time,
-                    "timestamp": iso_time
+                    "timestamp": iso_time,
                 })
     except ET.ParseError:
         pass
     return items
 
-# ---------------------------------------------------------------------------
-# News feed fetching
-# ---------------------------------------------------------------------------
+
 def fetch_one_feed(feed_tuple):
     """Fetch a single RSS feed and return parsed items."""
     url, source_name, tag_type = feed_tuple
@@ -146,62 +204,327 @@ def fetch_one_feed(feed_tuple):
         return parse_rss(xml, source_name, tag_type, max_items=10)
     return []
 
-def fetch_news_feeds():
-    """
-    Fetch live news from multiple RSS sources, filter for Iran relevance,
-    deduplicate, and sort by recency.
-    """
+
+def fetch_rss_news_feeds():
+    """Fetch and rank RSS/Atom feeds only."""
     feeds = [
-        # Iran International - fastest Farsi-English source
-        (
-            "https://www.iranintl.com/en/feed",
-            "Iran Intl", "breaking"
-        ),
-        # Google News aggregator - broadest coverage
+        ("https://www.iranintl.com/en/feed", "Iran Intl", "breaking"),
         (
             "https://news.google.com/rss/search?q=iran+war+OR+iran+strike+OR+tehran+OR+irgc+OR+hormuz+OR+khamenei+OR+regime+change+iran&hl=en&gl=US&ceid=US:en",
-            "Google News", "breaking"
+            "Google News",
+            "breaking",
         ),
-        # Wire services
         ("https://feeds.reuters.com/reuters/worldNews", "Reuters", "breaking"),
         ("https://www.aljazeera.com/xml/rss/all.xml", "Al Jazeera", "breaking"),
-        # Regional specialist
         ("https://www.middleeasteye.net/rss", "Middle East Eye", "regional"),
         ("https://www.timesofisrael.com/feed/", "Times of Israel", "regional"),
         ("https://www.jpost.com/rss/rssfeedsmiddleeast", "Jerusalem Post", "regional"),
-        # OSINT & defense analysis
         ("https://www.bellingcat.com/feed/", "Bellingcat", "osint"),
         ("https://breakingdefense.com/feed/", "Breaking Defense", "analysis"),
         ("https://warontherocks.com/feed/", "War on the Rocks", "analysis"),
     ]
 
     all_items = []
-
-    # Parallel fetch
     with ThreadPoolExecutor(max_workers=5) as pool:
         futures = {pool.submit(fetch_one_feed, f): f for f in feeds}
         for future in as_completed(futures, timeout=20):
             try:
-                result = future.result()
-                all_items.extend(result)
+                all_items.extend(future.result())
             except Exception:
                 pass
 
     if not all_items:
         return []
 
-    # Deduplicate by normalizing title
-    seen = set()
-    unique = []
-    for item in all_items:
-        key = re.sub(r'[^a-z0-9]', '', item["title"].lower())[:50]
-        if key not in seen:
-            seen.add(key)
-            unique.append(item)
+    unique = merge_and_dedupe_news_items(all_items, [], limit=25)
+    return unique
 
-    # Sort by recency
-    unique.sort(key=lambda x: x.get("time", "1970-01-01T00:00:00Z"), reverse=True)
-    return unique[:25]
+
+# ---------------------------------------------------------------------------
+# X API integration (high-signal allowlisted accounts only)
+# ---------------------------------------------------------------------------
+def sanitize_x_text(text):
+    if not text:
+        return ""
+    sanitized = re.sub(r"https?://\S+", "", text)
+    return re.sub(r"\s+", " ", sanitized).strip()
+
+
+def build_x_recent_search_query(accounts=None, keywords=None):
+    account_list = [a.lower().lstrip("@") for a in (accounts or X_ALLOWED_ACCOUNTS)]
+    keyword_list = keywords or X_QUERY_KEYWORDS
+
+    account_clause = " OR ".join(f"from:{account}" for account in account_list)
+    keyword_terms = []
+    for keyword in keyword_list:
+        term = keyword.strip()
+        if not term:
+            continue
+        keyword_terms.append(f'"{term}"' if " " in term else term)
+    keyword_clause = " OR ".join(keyword_terms)
+
+    return f"({account_clause}) ({keyword_clause}) -is:retweet -is:reply -is:quote lang:en"
+
+
+def fetch_x_recent_search(token, query, max_results=X_MAX_RESULTS):
+    params = {
+        "query": query,
+        "max_results": max(10, min(int(max_results), 100)),
+        "tweet.fields": "created_at,author_id,text,public_metrics",
+        "expansions": "author_id",
+        "user.fields": "username,name,verified,public_metrics",
+    }
+    url = "https://api.x.com/2/tweets/search/recent?" + urllib.parse.urlencode(params)
+    raw = fetch_url(
+        url,
+        timeout=8,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        },
+    )
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {}
+
+
+def is_high_signal_x_post(post, account_weights, keywords, user_by_id, now=None):
+    author = user_by_id.get(str(post.get("author_id", "")), {})
+    username = (author.get("username") or "").lower()
+    if username not in X_ALLOWED_ACCOUNTS:
+        return False, 0.0
+
+    cleaned_text = sanitize_x_text(post.get("text", ""))
+    if len(cleaned_text) < X_MIN_TEXT_LENGTH:
+        return False, 0.0
+
+    text_lower = cleaned_text.lower()
+    keyword_hits = sum(1 for kw in keywords if kw in text_lower)
+    if keyword_hits == 0:
+        return False, 0.0
+
+    iso_time = normalize_date(post.get("created_at"))
+    if not iso_time:
+        return False, 0.0
+
+    created_at = datetime.strptime(iso_time, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    now_utc = now or datetime.now(timezone.utc)
+    if created_at < (now_utc - timedelta(hours=X_MAX_AGE_HOURS)):
+        return False, 0.0
+
+    metrics = post.get("public_metrics") or {}
+    likes = int(metrics.get("like_count", 0) or 0)
+    reposts = int(metrics.get("retweet_count", 0) or 0)
+    replies = int(metrics.get("reply_count", 0) or 0)
+    quotes = int(metrics.get("quote_count", 0) or 0)
+    engagement = likes + (reposts * 2) + replies + quotes
+
+    if engagement < X_MIN_ENGAGEMENT:
+        return False, 0.0
+
+    account_weight = float(account_weights.get(username, 1.0))
+    score = engagement + (keyword_hits * 4) + (account_weight * 5)
+    if score < X_MIN_SCORE:
+        return False, 0.0
+
+    return True, round(score, 2)
+
+
+def normalize_x_post_to_news_item(post, user_by_id):
+    author = user_by_id.get(str(post.get("author_id", "")), {})
+    username = (author.get("username") or "").lstrip("@")
+    tweet_id = str(post.get("id", "")).strip()
+
+    cleaned = sanitize_x_text(post.get("text", ""))
+    title = cleaned if len(cleaned) <= 160 else cleaned[:157] + "..."
+    excerpt = cleaned if len(cleaned) <= 180 else cleaned[:177] + "..."
+
+    iso_time = normalize_date(post.get("created_at")) or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    source = f"@{username}" if username else "X"
+    url = f"https://x.com/{username}/status/{tweet_id}" if username and tweet_id else "https://x.com"
+
+    stable_id = f"x-{tweet_id}" if tweet_id else "x-" + hashlib.md5((title + source + url).encode()).hexdigest()[:12]
+
+    return {
+        "id": stable_id,
+        "type": "osint",
+        "tag": "osint",
+        "source": source,
+        "title": title,
+        "excerpt": excerpt,
+        "url": url,
+        "time": iso_time,
+        "timestamp": iso_time,
+    }
+
+
+def build_llm_relevance_prompt(items):
+    tweet_lines = []
+    for idx, item in enumerate(items):
+        tweet_lines.append(f"{idx + 1}. {item.get('source', 'X')}: {item.get('title', '')}")
+
+    tweets_block = "\n".join(tweet_lines)
+    return (
+        "You are filtering X posts for an Iran crisis monitoring dashboard.\n"
+        "Include posts directly relevant to Iran military, nuclear, IRGC, Hormuz, Hezbollah, "
+        "US-Iran-Israel escalation, or market impacts from Iran conflict.\n"
+        "Reply with ONLY tweet numbers, comma-separated, or NONE.\n\n"
+        f"Tweets:\n{tweets_block}"
+    )
+
+
+def parse_llm_relevant_indices(raw_text, total_count):
+    cleaned = (raw_text or "").strip()
+    if not cleaned:
+        return []
+    if cleaned.upper() == "NONE":
+        return []
+
+    indices = []
+    for token in cleaned.split(","):
+        token = token.strip()
+        if not token.isdigit():
+            continue
+        idx = int(token) - 1
+        if 0 <= idx < total_count and idx not in indices:
+            indices.append(idx)
+    return indices
+
+
+def filter_x_items_with_llm(items):
+    api_key = os.getenv(ANTHROPIC_API_KEY_ENV, "").strip()
+    if not items or not api_key:
+        return items
+
+    prompt = build_llm_relevance_prompt(items)
+    model = os.getenv(ANTHROPIC_MODEL_ENV, ANTHROPIC_DEFAULT_MODEL).strip() or ANTHROPIC_DEFAULT_MODEL
+    payload = {
+        "model": model,
+        "max_tokens": 120,
+        "temperature": 0,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    raw = fetch_url(
+        ANTHROPIC_API_URL,
+        timeout=6,
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        data=json.dumps(payload).encode("utf-8"),
+    )
+    if not raw:
+        return items
+
+    try:
+        response = json.loads(raw)
+        content_blocks = response.get("content") or []
+        llm_text = " ".join(
+            block.get("text", "")
+            for block in content_blocks
+            if isinstance(block, dict) and block.get("type") == "text"
+        ).strip()
+    except Exception:
+        return items
+
+    indices = parse_llm_relevant_indices(llm_text, len(items))
+    if not indices and llm_text.upper() == "NONE":
+        return []
+    if not indices:
+        return items
+
+    return [items[idx] for idx in indices]
+
+
+def fetch_x_source_items(now=None):
+    token = os.getenv(X_BEARER_TOKEN_ENV, "").strip()
+    if not token:
+        return []
+
+    query = build_x_recent_search_query()
+    payload = fetch_x_recent_search(token, query, max_results=X_MAX_RESULTS)
+    posts = payload.get("data") or []
+    users = (payload.get("includes") or {}).get("users") or []
+    if not posts or not users:
+        return []
+
+    user_by_id = {str(user.get("id", "")): user for user in users}
+    candidates = []
+
+    for post in posts:
+        accepted, score = is_high_signal_x_post(
+            post,
+            account_weights=X_ACCOUNT_WEIGHTS,
+            keywords=X_QUERY_KEYWORDS,
+            user_by_id=user_by_id,
+            now=now,
+        )
+        if not accepted:
+            continue
+
+        author = user_by_id.get(str(post.get("author_id", "")), {})
+        username = (author.get("username") or "").lower()
+        if not username:
+            continue
+
+        candidates.append((
+            score,
+            username,
+            normalize_x_post_to_news_item(post, user_by_id),
+        ))
+
+    # Highest-signal first, then newest.
+    candidates.sort(key=lambda item: (item[0], item[2].get("time", "")), reverse=True)
+
+    selected = []
+    account_counts = {}
+    for score, username, item in candidates:
+        _ = score
+        if account_counts.get(username, 0) >= X_MAX_PER_ACCOUNT:
+            continue
+        selected.append(item)
+        account_counts[username] = account_counts.get(username, 0) + 1
+        if len(selected) >= X_MAX_ITEMS:
+            break
+
+    return filter_x_items_with_llm(selected)
+
+
+def _news_dedupe_key(item):
+    title = (item.get("title") or "").lower()
+    normalized = re.sub(r"[^a-z0-9]", "", title)
+    if normalized:
+        return normalized[:80]
+    fallback = (item.get("url") or item.get("id") or "").lower()
+    return fallback[:80]
+
+
+def merge_and_dedupe_news_items(rss_items, x_items, limit=25):
+    combined = (rss_items or []) + (x_items or [])
+    unique = []
+    seen = set()
+
+    for item in combined:
+        key = _news_dedupe_key(item)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(item)
+
+    unique.sort(key=lambda item: item.get("time", "1970-01-01T00:00:00Z"), reverse=True)
+    return unique[:limit]
+
+
+def fetch_news_feeds():
+    rss_items = fetch_rss_news_feeds()
+    x_items = fetch_x_source_items()
+    return merge_and_dedupe_news_items(rss_items, x_items, limit=25)
+
 
 # ---------------------------------------------------------------------------
 # Polymarket - price history via CLOB API
@@ -216,7 +539,6 @@ def fetch_price_history(token_id, interval="max", fidelity=120):
 
     Returns: list of {t: ISO8601, y: probability_pct}
     """
-    import datetime as dt_module
     url = f"https://clob.polymarket.com/prices-history?market={token_id}&interval={interval}&fidelity={fidelity}"
     raw = fetch_url(url, timeout=10)
     if not raw:
@@ -226,14 +548,14 @@ def fetch_price_history(token_id, interval="max", fidelity=120):
         history = data.get("history", [])
         result = []
         for pt in history:
-            ts = dt_module.datetime.utcfromtimestamp(pt["t"]).strftime("%Y-%m-%dT%H:%M:%SZ")
+            ts = datetime.utcfromtimestamp(pt["t"]).strftime("%Y-%m-%dT%H:%M:%SZ")
             result.append({"t": ts, "y": round(float(pt["p"]) * 100, 1)})
         return result
     except Exception:
         return []
 
+
 def fetch_polymarket():
-    import urllib.parse as up
     markets = []
     try:
         url = "https://gamma-api.polymarket.com/events?active=true&closed=false&order=volume24hr&ascending=false&limit=50"
@@ -287,19 +609,19 @@ def fetch_polymarket():
                     "status": "active",
                     "source": "Polymarket",
                     "url": f"https://polymarket.com/event/{event.get('slug', '')}",
-                    "_clobTokenId": first_token_id  # internal field, stripped later
+                    "_clobTokenId": first_token_id,  # internal field, stripped later
                 })
     except Exception:
         pass
     markets.sort(key=lambda m: m["volume"], reverse=True)
     return markets
 
+
 def build_odds_history(markets):
     """
     Fetch real CLOB price history for the top 6 markets.
     Returns dict: question -> {label: [history_pts]}
     """
-    import datetime as dt_module
     odds_history = {}
     top_markets = markets[:6]
 
@@ -308,7 +630,7 @@ def build_odds_history(markets):
         token_id = m.get("_clobTokenId")
         label = next(
             (o["label"] for o in m["outcomes"] if o["label"] == "Yes"),
-            m["outcomes"][0]["label"] if m["outcomes"] else "Yes"
+            m["outcomes"][0]["label"] if m["outcomes"] else "Yes",
         )
 
         history_pts = []
@@ -319,11 +641,11 @@ def build_odds_history(markets):
         if not history_pts:
             yes_prob = next(
                 (o["probability"] for o in m["outcomes"] if o["label"] == "Yes"),
-                m["outcomes"][0]["probability"] if m["outcomes"] else 50.0
+                m["outcomes"][0]["probability"] if m["outcomes"] else 50.0,
             )
-            now_ts = dt_module.datetime.utcnow()
+            now_ts = datetime.utcnow()
             for i in range(14, -1, -1):
-                t = now_ts - dt_module.timedelta(hours=i * 6)
+                t = now_ts - timedelta(hours=i * 6)
                 noise = random.uniform(-3, 3) * (i / 14)
                 val = max(1, min(99, yes_prob + noise))
                 history_pts.append({"t": t.strftime("%Y-%m-%dT%H:%M:%SZ"), "y": round(val, 1)})
@@ -367,8 +689,8 @@ class handler(BaseHTTPRequestHandler):
                     len(list(v.values())[0]) if v else 0
                     for v in odds_history.values()
                 ),
-                "fetchedAt": now.isoformat()
-            }
+                "fetchedAt": now.isoformat(),
+            },
         }
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
