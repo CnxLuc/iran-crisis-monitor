@@ -1735,11 +1735,37 @@ button { cursor: pointer; font-family: inherit; }
   .header-divider { display: none; }
 }
 @media (max-width: 480px) {
+  body { overflow-x: clip; }
+
   .grid-23 { grid-template-columns: 1fr; }
   .market-indicator-row { grid-template-columns: 1fr 1fr; }
   .facts-grid { grid-template-columns: 1fr 1fr; }
   .proxy-grid { grid-template-columns: 1fr; }
   .analogue-grid { grid-template-columns: 1fr; }
+
+  /* Header: allow wrapping on small screens */
+  .site-header {
+    height: auto;
+    min-height: 44px;
+    padding: var(--sp-2) var(--sp-3);
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+  .header-logo { order: 1; }
+  .header-right { order: 2; margin-left: auto; }
+  .header-timestamp { font-size: 0.72rem; }
+
+  /* Tabs: larger touch targets, hide decorative numbers */
+  .tab-nav {
+    gap: var(--sp-1);
+    padding: var(--sp-2) var(--sp-3);
+  }
+  .tab-btn {
+    padding: var(--sp-3) var(--sp-4);
+    font-size: 0.75rem;
+    min-height: 44px;
+  }
+  .tab-num { display: none; }
 }
 
 /* ============================================================
