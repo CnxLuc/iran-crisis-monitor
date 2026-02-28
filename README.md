@@ -34,6 +34,25 @@ python3 deploy_vercel.py
 
 To sync `public/index.html` to this repo, run the "Sync HTML from Vercel" GitHub Action from the Actions tab.
 
+## Local Dev (Beginner-Friendly)
+
+This repo can run fully locally. These helper scripts are safe and do not deploy anything:
+
+```bash
+# one-time (or whenever you want to refresh from deployed frontend)
+./scripts/dev-setup.sh
+
+# start local dev server
+./scripts/dev-start.sh
+```
+
+Then open `http://localhost:3000`.
+
+Notes:
+- `dev-setup.sh` only overwrites `public/index.html` when it still looks like the placeholder.
+- If you already changed `public/index.html`, it will skip by default.
+- Use `./scripts/dev-setup.sh --force` only when you intentionally want to replace your local HTML.
+
 ## Design
 
 - IBM Plex Sans (display/body), JetBrains Mono (data)
