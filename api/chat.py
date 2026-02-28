@@ -22,6 +22,7 @@ ANALYST_FIRST = [
 ANALYST_SUFFIX = ["ACTUAL", "PRIME", "ALPHA", "BRAVO", "ZERO", "ONE", "SIX", "SEVEN"]
 COLORS = ["#2563eb", "#dc2626", "#d97706", "#16a34a", "#7c3aed", "#0891b2",
            "#be185d", "#9333ea", "#0d9488", "#b45309", "#4f46e5", "#059669"]
+MESSAGE_TTL = timedelta(minutes=5)
 
 def get_db():
     db = sqlite3.connect(DB_PATH)
@@ -51,6 +52,27 @@ def generate_codename(db):
         if name not in existing:
             return name
     return random.choice(ANALYST_FIRST) + "-" + str(random.randint(10, 99))
+
+def message_cutoff_iso(now=None):
+    now = now or datetime.now(timezone.utc)
+    return (now - MESSAGE_TTL).isoformat()
+
+def fetch_messages(db, since=None, now=None):
+    cutoff = message_cutoff_iso(now)
+    if since:
+        return db.execute(
+            "SELECT id, analyst, text, created_at FROM messages WHERE created_at > ? AND created_at >= ? ORDER BY created_at ASC LIMIT 100",
+            (since, cutoff)
+        ).fetchall()
+    rows = db.execute(
+        "SELECT id, analyst, text, created_at FROM messages WHERE created_at >= ? ORDER BY id DESC LIMIT 50",
+        (cutoff,)
+    ).fetchall()
+    return list(reversed(rows))
+
+def prune_expired_messages(db, now=None):
+    cutoff = message_cutoff_iso(now)
+    db.execute("DELETE FROM messages WHERE created_at < ?", (cutoff,))
 
 
 class handler(BaseHTTPRequestHandler):
@@ -109,16 +131,8 @@ class handler(BaseHTTPRequestHandler):
             if action == "/messages":
                 params = self._get_query_params()
                 since = params.get("since", [None])[0]
-                if since:
-                    rows = db.execute(
-                        "SELECT id, analyst, text, created_at FROM messages WHERE created_at > ? ORDER BY created_at ASC LIMIT 100",
-                        (since,)
-                    ).fetchall()
-                else:
-                    rows = db.execute(
-                        "SELECT id, analyst, text, created_at FROM messages ORDER BY id DESC LIMIT 50"
-                    ).fetchall()
-                    rows = list(reversed(rows))
+                prune_expired_messages(db)
+                rows = fetch_messages(db, since=since)
                 result = [{"id": r[0], "analyst": r[1], "text": r[2], "time": r[3], "color": get_color(r[1])} for r in rows]
                 self._json_response(result)
 
@@ -154,6 +168,7 @@ class handler(BaseHTTPRequestHandler):
                 db.execute("INSERT INTO messages (analyst, text, created_at) VALUES (?,?,?)", (analyst, text, now))
                 color = get_color(analyst)
                 db.execute("INSERT OR REPLACE INTO presence (analyst, last_seen, color) VALUES (?,?,?)", (analyst, now, color))
+                prune_expired_messages(db)
                 db.commit()
                 self._json_response({"status": "ok", "time": now}, 201)
 
@@ -175,8 +190,7 @@ class handler(BaseHTTPRequestHandler):
                 db.execute("INSERT OR REPLACE INTO presence (analyst, last_seen, color) VALUES (?,?,?)", (analyst, now, color))
                 old = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
                 db.execute("DELETE FROM presence WHERE last_seen < ?", (old,))
-                day_ago = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-                db.execute("DELETE FROM messages WHERE created_at < ?", (day_ago,))
+                prune_expired_messages(db)
                 db.commit()
                 self._json_response({"status": "ok"})
 

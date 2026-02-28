@@ -3985,12 +3985,18 @@ document.addEventListener('DOMContentLoaded', () => {
 <script>
 /* ============ CHAT SYSTEM ============ */
 const CHAT_API = (typeof API_URL !== 'undefined' ? API_URL.replace(/\/live\.py$/, '/chat.py') : '/api/chat.py');
+const CHAT_MESSAGE_TTL_MS = 5 * 60 * 1000;
 
 /* On Vercel, sub-path routing (chat.py/session) doesn't work — use ?action= param */
 const IS_VERCEL = window.location.hostname.includes('vercel.app');
 function chatUrl(action) {
   if (IS_VERCEL) return CHAT_API + '?action=' + action;
   return CHAT_API + '/' + action;
+}
+
+function appendChatQueryParam(url, key, value) {
+  const separator = url.includes('?') ? '&' : '?';
+  return url + separator + key + '=' + value;
 }
 
 const chatState = {
@@ -4059,9 +4065,10 @@ async function initChat() {
 
 async function pollMessages() {
   try {
+    pruneExpiredRenderedMessages();
     let url = chatUrl('messages');
     if (chatState.lastMsgTime) {
-      url += '?since=' + encodeURIComponent(chatState.lastMsgTime);
+      url = appendChatQueryParam(url, 'since', encodeURIComponent(chatState.lastMsgTime));
     }
     const res = await fetch(url);
     const msgs = await res.json();
@@ -4092,15 +4099,28 @@ function renderChatMessage(msg) {
   const container = document.getElementById('chatMessages');
   const isMine = msg.analyst === chatState.analyst;
   const timeStr = formatChatTime(msg.time);
+  const msgTimeMs = Date.parse(msg.time);
 
   const el = document.createElement('div');
   el.className = `chat-msg ${isMine ? 'mine' : 'other'}`;
+  if (!Number.isNaN(msgTimeMs)) el.dataset.msgTimeMs = String(msgTimeMs);
   el.innerHTML = `
     ${!isMine ? `<div class="chat-msg-sender" style="color:${msg.color || '#666'}">${escHtml(msg.analyst)}</div>` : ''}
     <div class="chat-msg-bubble">${escHtml(msg.text)}</div>
     <div class="chat-msg-time">${timeStr}</div>
   `;
   container.appendChild(el);
+}
+
+function pruneExpiredRenderedMessages(nowMs = Date.now()) {
+  const cutoff = nowMs - CHAT_MESSAGE_TTL_MS;
+  const messages = document.querySelectorAll('#chatMessages .chat-msg[data-msg-time-ms]');
+  messages.forEach((node) => {
+    const msgTimeMs = Number(node.dataset.msgTimeMs || 0);
+    if (msgTimeMs > 0 && msgTimeMs < cutoff) {
+      node.remove();
+    }
+  });
 }
 
 function addSystemMessage(text) {
