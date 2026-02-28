@@ -1,0 +1,22 @@
+name: Sync HTML from Vercel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download index.html from Vercel
+        run: |
+          mkdir -p public
+          curl -s "https://iran-crisis-monitor.vercel.app/" > public/index.html
+          echo "Downloaded $(wc -c < public/index.html) bytes"
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/index.html
+          git diff --cached --quiet || git commit -m "Sync index.html from Vercel deployment"
+          git push
