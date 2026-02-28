@@ -3538,6 +3538,49 @@ function sourceBadgeClass(source) {
   return 'badge-gray';
 }
 
+function formatMarketDate(rawDate) {
+  if (!rawDate) return '';
+  const dt = new Date(rawDate);
+  if (Number.isNaN(dt.getTime())) return '';
+  return dt.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC'
+  });
+}
+
+function marketResolutionSuffix(market) {
+  const resolutionLabel = formatMarketDate(
+    market && (market.resolutionDate || market.endDate || market.end_date)
+  );
+  if (!resolutionLabel) return '';
+  return ` · Resolves ${resolutionLabel}`;
+}
+
+function marketDisplayQuestion(market) {
+  const question = (market && market.question ? String(market.question) : '').trim();
+  const firstLabel = (
+    market &&
+    market.outcomes &&
+    market.outcomes[0] &&
+    market.outcomes[0].label
+  ) ? String(market.outcomes[0].label).trim() : '';
+
+  if (!question) return firstLabel || '';
+  if (!firstLabel) return question;
+
+  const normalized = firstLabel.toLowerCase();
+  if (normalized === 'yes' || normalized === 'no') return question;
+  if (question.toLowerCase().includes(normalized)) return question;
+
+  // Polymarket multi-option titles often use ellipsis placeholders.
+  if (question.includes('...')) return question.replace('...', ` ${firstLabel}`);
+  if (question.includes('…')) return question.replace('…', ` ${firstLabel}`);
+
+  return question;
+}
+
 /* ============ RENDER NEWS FEED ============ */
 function renderNews(news) {
   const feed = document.getElementById('newsFeed');
@@ -3586,8 +3629,8 @@ function renderMarkets(markets) {
     return `<a href="${m.url}" target="_blank" rel="noopener noreferrer" class="market-compact-card" style="--card-accent:${color};">
       <div class="market-compact-prob ${probClass} data-num">${prob.toFixed(1)}%</div>
       <div class="market-compact-info">
-        <div class="market-compact-question">${m.question}</div>
-        <div class="market-compact-vol">${m.volumeFormatted || ''} vol · Polymarket</div>
+        <div class="market-compact-question">${marketDisplayQuestion(m)}</div>
+        <div class="market-compact-vol">${m.volumeFormatted || ''} vol · Polymarket${marketResolutionSuffix(m)}</div>
       </div>
     </a>`;
   }).join('');
@@ -3663,8 +3706,8 @@ function renderPmTrends(markets, oddsHistory) {
     const prob = m.outcomes && m.outcomes[0] ? m.outcomes[0].probability : 50;
     const probClass = prob >= 60 ? 'high' : prob >= 30 ? 'medium' : 'low';
     const canvasId = `pmChart${i}`;
-    const question = m.question;
-    const histData = oddsHistory && oddsHistory[question];
+    const questionKey = m.question;
+    const histData = oddsHistory && oddsHistory[questionKey];
     let delta = null;
     let horizonLabel = '';
     if (histData) {
@@ -3683,11 +3726,11 @@ function renderPmTrends(markets, oddsHistory) {
       : '';
     return `<a href="${m.url || 'https://polymarket.com'}" target="_blank" rel="noopener noreferrer" class="pm-trend-card" style="text-decoration:none;color:inherit;">
       <div class="pm-trend-header">
-        <div class="pm-trend-question">${m.question}</div>
+        <div class="pm-trend-question">${marketDisplayQuestion(m)}</div>
         <div class="pm-trend-prob ${probClass}">${prob.toFixed(1)}%</div>
       </div>
       <div class="pm-trend-meta">
-        <span class="pm-trend-vol">${m.volumeFormatted || '\u2014'} vol \u00b7 Polymarket${horizonLabel ? ' \u00b7 ' + horizonLabel : ''}</span>
+        <span class="pm-trend-vol">${m.volumeFormatted || '\u2014'} vol \u00b7 Polymarket${marketResolutionSuffix(m)}${horizonLabel ? ' \u00b7 ' + horizonLabel : ''}</span>
         ${deltaHtml}
       </div>
       <div class="pm-trend-chart-wrap">
@@ -3859,12 +3902,12 @@ function getFallbackData() {
   const lu = now.toUTCString().replace(',', '').split(' ').slice(1).join(' ');
   
   const mkts = [
-    { question: "Will Iran and the US reach a ceasefire in March 2026?", volume: 2840000, volumeFormatted: "$2.8M", outcomes: [{ label: "Yes", probability: 38.5 }], url: "https://polymarket.com" },
-    { question: "Will Iran close the Strait of Hormuz in 2026?", volume: 1920000, volumeFormatted: "$1.9M", outcomes: [{ label: "Yes", probability: 22.3 }], url: "https://polymarket.com" },
-    { question: "Will Iran test a nuclear device in 2026?", volume: 3100000, volumeFormatted: "$3.1M", outcomes: [{ label: "Yes", probability: 12.7 }], url: "https://polymarket.com" },
-    { question: "Will Iranian regime fall by end of 2026?", volume: 4250000, volumeFormatted: "$4.3M", outcomes: [{ label: "Yes", probability: 29.4 }], url: "https://polymarket.com" },
-    { question: "Will oil exceed $100 by April 2026?", volume: 5600000, volumeFormatted: "$5.6M", outcomes: [{ label: "Yes", probability: 41.2 }], url: "https://polymarket.com" },
-    { question: "Will Hezbollah re-enter the war in 2026?", volume: 870000, volumeFormatted: "$870K", outcomes: [{ label: "Yes", probability: 31.8 }], url: "https://polymarket.com" },
+    { question: "Will Iran and the US reach a ceasefire in March 2026?", resolutionDate: "2026-03-31T23:59:59Z", volume: 2840000, volumeFormatted: "$2.8M", outcomes: [{ label: "Yes", probability: 38.5 }], url: "https://polymarket.com" },
+    { question: "Will Iran close the Strait of Hormuz in 2026?", resolutionDate: "2026-12-31T23:59:59Z", volume: 1920000, volumeFormatted: "$1.9M", outcomes: [{ label: "Yes", probability: 22.3 }], url: "https://polymarket.com" },
+    { question: "Will Iran test a nuclear device in 2026?", resolutionDate: "2026-12-31T23:59:59Z", volume: 3100000, volumeFormatted: "$3.1M", outcomes: [{ label: "Yes", probability: 12.7 }], url: "https://polymarket.com" },
+    { question: "Will Iranian regime fall by end of 2026?", resolutionDate: "2026-12-31T23:59:59Z", volume: 4250000, volumeFormatted: "$4.3M", outcomes: [{ label: "Yes", probability: 29.4 }], url: "https://polymarket.com" },
+    { question: "Will oil exceed $100 by April 2026?", resolutionDate: "2026-04-30T23:59:59Z", volume: 5600000, volumeFormatted: "$5.6M", outcomes: [{ label: "Yes", probability: 41.2 }], url: "https://polymarket.com" },
+    { question: "Will Hezbollah re-enter the war in 2026?", resolutionDate: "2026-12-31T23:59:59Z", volume: 870000, volumeFormatted: "$870K", outcomes: [{ label: "Yes", probability: 31.8 }], url: "https://polymarket.com" },
   ];
 
   function makeHist(base) {
