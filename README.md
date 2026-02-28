@@ -1,6 +1,6 @@
 # Iran Crisis Monitor
 
-A real-time intelligence dashboard for monitoring the Iran crisis — built with the kind of analytical framework used by world-class intelligence analysts.
+A real-time intelligence dashboard for monitoring the Iran crisis - built with the kind of analytical framework used by world-class intelligence analysts.
 
 ## Live
 
@@ -8,31 +8,31 @@ A real-time intelligence dashboard for monitoring the Iran crisis — built with
 
 ## Features
 
-- **Live Monitoring** — Real-time news feed from OSINT accounts, Iran International, Reuters, Al Jazeera, Bellingcat, and defense analysis outlets. X/OSINT-first sourcing philosophy.
-- **Polymarket Odds** — Live prediction market data with historical trend charts via CLOB API (`interval=max`).
-- **Situation Overview** — Current threat level, key indicators, strategic context.
-- **Order of Battle** — US, Israeli, and Iranian force dispositions.
-- **Scenarios & Watch** — Probabilistic scenario analysis with key indicators to watch.
-- **Economic Impact** — Oil markets, sanctions, shipping disruption analysis.
-- **Analytical Frameworks** — Comparative case analysis (Iraq 2003, Libya 2011, Syria 2017), Kissinger / Brzezinski strategic frameworks, nuclear breakout timeline.
-- **Situation Room Chat** — Real-time analyst chat with random CIA-style codenames. Facebook Messenger-style collapsed bar UI.
+- **Live Monitoring** - Real-time news feed from OSINT accounts, Iran International, Reuters, Al Jazeera, Bellingcat, and defense analysis outlets. X/OSINT-first sourcing philosophy.
+- **Polymarket Odds** - Live prediction market data with historical trend charts via CLOB API (`interval=max`).
+- **Situation Overview** - Current threat level, key indicators, strategic context.
+- **Order of Battle** - US, Israeli, and Iranian force dispositions.
+- **Scenarios & Watch** - Probabilistic scenario analysis with key indicators to watch.
+- **Economic Impact** - Oil markets, sanctions, shipping disruption analysis.
+- **Analytical Frameworks** - Comparative case analysis (Iraq 2003, Libya 2011, Syria 2017), Kissinger / Brzezinski strategic frameworks, nuclear breakout timeline.
+- **Situation Room Chat** - Real-time analyst chat with random CIA-style codenames. Facebook Messenger-style collapsed bar UI.
 
 ## Architecture
 
 ```
 iran-dashboard/          # Perplexity hosting (CGI-bin backend)
-├── index.html           # Single-file frontend (~4200 lines)
-├── cgi-bin/
-│   ├── live.py          # Live data: RSS feeds + Polymarket API + CLOB history
-│   └── chat.py          # Chat system: sessions, messages, heartbeat, online users
-│
++-- index.html           # Single-file frontend (~4200 lines)
++-- cgi-bin/
+    +-- live.py          # Live data: RSS feeds + Polymarket API + CLOB history
+    +-- chat.py          # Chat system: sessions, messages, heartbeat, online users
+
 iran-vercel/             # Vercel deployment
-├── vercel.json          # Routing config
-├── api/
-│   ├── live.py          # BaseHTTPRequestHandler class (Vercel Python runtime)
-│   └── chat.py          # Query-param routing (?action=session|messages|heartbeat|online)
-└── public/
-    └── index.html       # Frontend with Vercel-specific chatUrl() routing helper
++-- vercel.json          # Routing config
++-- api/
+    +-- live.py          # BaseHTTPRequestHandler class (Vercel Python runtime)
+    +-- chat.py          # Query-param routing (?action=session|messages|heartbeat|online)
++-- public/
+    +-- index.html       # Frontend with Vercel-specific chatUrl() routing helper
 ```
 
 ## Data Sources
