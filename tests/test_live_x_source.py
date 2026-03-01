@@ -54,29 +54,19 @@ class LiveXSourceTests(unittest.TestCase):
         }
         self.assertTrue(live.is_low_signal_story(item))
 
-    def test_score_news_item_for_monitoring_boosts_tripwire_osint(self):
-        now = datetime(2026, 3, 1, 12, 0, 0, tzinfo=timezone.utc)
-        osint_item = {
-            "source": "@auroraintel",
-            "tag": "osint",
-            "title": "IRGC naval units repositioning in Strait of Hormuz",
-            "excerpt": "Tanker disruption risk and missile deployment indicators increasing.",
-            "time": "2026-03-01T11:50:00Z",
-            "url": "https://x.com/auroraintel/status/1",
+    def test_is_major_impact_story_accepts_us_servicemembers_killed(self):
+        item = {
+            "title": "Three US servicemembers killed in drone attack on outpost",
+            "excerpt": "Pentagon confirms fatalities and retaliatory options under review.",
         }
-        generic_item = {
-            "source": "Al Jazeera",
-            "tag": "breaking",
-            "title": "Regional tensions continue after overnight strikes",
-            "excerpt": "General coverage without operational indicators.",
-            "time": "2026-03-01T11:50:00Z",
-            "url": "https://example.com/a",
-        }
+        self.assertTrue(live.is_major_impact_story(item))
 
-        self.assertGreater(
-            live.score_news_item_for_monitoring(osint_item, now=now),
-            live.score_news_item_for_monitoring(generic_item, now=now),
-        )
+    def test_is_major_impact_story_rejects_generic_tension_update(self):
+        item = {
+            "title": "Regional tensions continue after overnight developments",
+            "excerpt": "Officials monitor situation as diplomacy remains uncertain.",
+        }
+        self.assertFalse(live.is_major_impact_story(item))
 
     def test_is_high_signal_x_post_rejects_low_engagement_noise(self):
         now = datetime(2026, 2, 28, 12, 0, 0, tzinfo=timezone.utc)
@@ -124,7 +114,7 @@ class LiveXSourceTests(unittest.TestCase):
         self.assertTrue(item["time"].endswith("Z"))
         self.assertNotIn("https://", item["title"])
 
-    def test_merge_and_dedupe_news_items_collapses_duplicate_headlines(self):
+    def test_merge_and_dedupe_news_items_collapses_duplicate_headlines_keep_newest(self):
         rss_items = [
             {
                 "id": "rss-1",
@@ -151,69 +141,44 @@ class LiveXSourceTests(unittest.TestCase):
         merged = live.merge_and_dedupe_news_items(rss_items, x_items, limit=25)
 
         self.assertEqual(len(merged), 2)
+        self.assertEqual(merged[1]["id"], "x-1")
         self.assertEqual(merged[0]["id"], "x-2")
 
-    def test_merge_and_dedupe_news_items_reserves_x_slots(self):
-        rss_items = []
-        for i in range(30):
-            rss_items.append({
-                "id": f"rss-{i}",
-                "title": f"RSS {i}",
-                "time": f"2026-02-28T16:{59-i:02d}:00Z",
-                "url": f"https://example.com/rss/{i}",
-            })
-        x_items = []
-        for i in range(6):
-            x_items.append({
-                "id": f"x-{i}",
-                "title": f"X {i}",
-                "time": f"2026-02-28T12:{59-i:02d}:00Z",
-                "url": f"https://x.com/a/status/{i}",
+    def test_merge_and_dedupe_news_items_sorts_strictly_by_recency(self):
+        rss_items = [
+            {
+                "id": "rss-older",
+                "title": "Iran update older",
+                "time": "2026-02-28T08:00:00Z",
+                "url": "https://example.com/older",
+            },
+            {
+                "id": "rss-newer",
+                "title": "Iran update newer",
+                "time": "2026-02-28T11:00:00Z",
+                "url": "https://example.com/newer",
+            },
+        ]
+        x_items = [
+            {
+                "id": "x-mid",
+                "title": "IRGC movement update",
+                "time": "2026-02-28T10:00:00Z",
+                "url": "https://x.com/a/status/77",
                 "source": "@auroraintel",
                 "type": "osint",
                 "tag": "osint",
-            })
+            },
+        ]
 
         merged = live.merge_and_dedupe_news_items(rss_items, x_items, limit=25)
-        x_count = sum(1 for item in merged if str(item.get("source", "")).startswith("@"))
-
-        self.assertEqual(len(merged), 25)
-        self.assertGreaterEqual(x_count, 5)
-
-    def test_merge_and_dedupe_news_items_enforces_min_x_slots_when_available(self):
-        rss_items = []
-        for i in range(30):
-            rss_items.append({
-                "id": f"rss-{i}",
-                "title": f"RSS Iran update {i}",
-                "time": f"2026-02-28T16:{59-i:02d}:00Z",
-                "url": f"https://example.com/rss/{i}",
-                "source": "Reuters",
-                "tag": "breaking",
-            })
-        x_items = []
-        for i in range(15):
-            x_items.append({
-                "id": f"x-{i}",
-                "title": f"IRGC update Hormuz {i}",
-                "time": f"2026-02-28T15:{59-i:02d}:00Z",
-                "url": f"https://x.com/a/status/{i}",
-                "source": "@auroraintel",
-                "type": "osint",
-                "tag": "osint",
-            })
-
-        merged = live.merge_and_dedupe_news_items(rss_items, x_items, limit=25, min_x_slots=10)
-        x_count = sum(1 for item in merged if str(item.get("source", "")).startswith("@"))
-
-        self.assertEqual(len(merged), 25)
-        self.assertGreaterEqual(x_count, 10)
+        self.assertEqual([item["id"] for item in merged], ["rss-newer", "x-mid", "rss-older"])
 
     def test_fetch_news_feeds_includes_x_items_sorted_by_recency(self):
         rss_items = [
             {
                 "id": "rss-1",
-                "title": "Reuters: Iran talks continue",
+                "title": "Reuters: IRGC missile strike triggers new US sanctions",
                 "time": "2026-02-28T09:00:00Z",
                 "url": "https://example.com/reuters",
             }
@@ -221,7 +186,7 @@ class LiveXSourceTests(unittest.TestCase):
         x_items = [
             {
                 "id": "x-1",
-                "title": "IRGC launches near Hormuz",
+                "title": "Three US servicemembers killed in attack near Jordan border",
                 "time": "2026-02-28T10:00:00Z",
                 "url": "https://x.com/auroraintel/status/1",
             }
@@ -239,12 +204,43 @@ class LiveXSourceTests(unittest.TestCase):
         self.assertEqual(merged[0]["id"], "x-1")
         self.assertEqual(merged[1]["id"], "rss-1")
 
+    def test_fetch_news_feeds_filters_out_non_major_updates(self):
+        rss_items = [
+            {
+                "id": "rss-low",
+                "title": "Regional tensions continue as leaders issue statements",
+                "time": "2026-02-28T09:30:00Z",
+                "url": "https://example.com/low",
+            },
+            {
+                "id": "rss-high",
+                "title": "US sanctions IRGC commanders after missile launch on base",
+                "time": "2026-02-28T09:20:00Z",
+                "url": "https://example.com/high",
+            },
+        ]
+        with patch.object(live, "fetch_rss_news_feeds", return_value=rss_items):
+            with patch.object(live, "fetch_x_source_items", return_value=([], {"xStatus": "ok"})):
+                merged = live.fetch_news_feeds()
+
+        self.assertEqual([item["id"] for item in merged], ["rss-high"])
+
     def test_fetch_news_feeds_return_debug_includes_x_counters(self):
         rss_items = [
-            {"id": "rss-1", "title": "A", "time": "2026-02-28T09:00:00Z", "url": "https://a"}
+            {
+                "id": "rss-1",
+                "title": "IAEA says Iran accelerates enrichment at Fordow",
+                "time": "2026-02-28T09:00:00Z",
+                "url": "https://a",
+            }
         ]
         x_items = [
-            {"id": "x-1", "title": "B", "time": "2026-02-28T10:00:00Z", "url": "https://b"}
+            {
+                "id": "x-1",
+                "title": "US servicemembers killed in drone attack; retaliation expected",
+                "time": "2026-02-28T10:00:00Z",
+                "url": "https://b",
+            }
         ]
         x_debug = {
             "xEnabled": True,
