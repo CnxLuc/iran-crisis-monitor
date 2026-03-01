@@ -2300,7 +2300,7 @@ button { cursor: pointer; font-family: inherit; }
     <div class="header-divider"></div>
     <div class="header-status">
       <div class="pulse-dot"></div>
-      <span>Active Conflict — 28 Feb 2026</span>
+      <span id="headerDate">Active Conflict — </span>
     </div>
   </div>
   <div class="header-right">
@@ -4242,6 +4242,12 @@ function updateClock() {
 
 /* ============ INIT ============ */
 document.addEventListener('DOMContentLoaded', () => {
+  // Set today's date in header
+  const now = new Date();
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('headerDate').textContent =
+    'Active Conflict \u2014 ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+
   // Start clock
   setInterval(updateClock, 1000);
   updateClock();
