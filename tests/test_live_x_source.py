@@ -1,5 +1,6 @@
 import os
 import io
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
@@ -9,6 +10,22 @@ from api import live
 
 
 class LiveXSourceTests(unittest.TestCase):
+    def test_load_x_accounts_from_markdown_extracts_handles(self):
+        with tempfile.NamedTemporaryFile("w+", suffix=".md", delete=False) as fh:
+            fh.write(
+                "# Test\n"
+                "- [@Alpha_one](https://x.com/Alpha_one)\n"
+                "- [@BetaTwo](https://x.com/BetaTwo)\n"
+            )
+            tmp_path = fh.name
+
+        try:
+            handles = live.load_x_accounts_from_markdown(tmp_path)
+        finally:
+            os.unlink(tmp_path)
+
+        self.assertEqual(handles, ["alpha_one", "betatwo"])
+
     def test_build_x_recent_search_query_uses_whitelist_and_keywords(self):
         query = live.build_x_recent_search_query(
             accounts=["AuroraIntel", "sentdefender"],
@@ -29,6 +46,37 @@ class LiveXSourceTests(unittest.TestCase):
 
         self.assertEqual(items, [])
         fetch_mock.assert_not_called()
+
+    def test_is_low_signal_story_rejects_human_interest_without_tripwires(self):
+        item = {
+            "title": "Man accuses Israel of war crimes as he holds remains of girl killed in Iran",
+            "excerpt": "A human story from the scene of the strike.",
+        }
+        self.assertTrue(live.is_low_signal_story(item))
+
+    def test_score_news_item_for_monitoring_boosts_tripwire_osint(self):
+        now = datetime(2026, 3, 1, 12, 0, 0, tzinfo=timezone.utc)
+        osint_item = {
+            "source": "@auroraintel",
+            "tag": "osint",
+            "title": "IRGC naval units repositioning in Strait of Hormuz",
+            "excerpt": "Tanker disruption risk and missile deployment indicators increasing.",
+            "time": "2026-03-01T11:50:00Z",
+            "url": "https://x.com/auroraintel/status/1",
+        }
+        generic_item = {
+            "source": "Al Jazeera",
+            "tag": "breaking",
+            "title": "Regional tensions continue after overnight strikes",
+            "excerpt": "General coverage without operational indicators.",
+            "time": "2026-03-01T11:50:00Z",
+            "url": "https://example.com/a",
+        }
+
+        self.assertGreater(
+            live.score_news_item_for_monitoring(osint_item, now=now),
+            live.score_news_item_for_monitoring(generic_item, now=now),
+        )
 
     def test_is_high_signal_x_post_rejects_low_engagement_noise(self):
         now = datetime(2026, 2, 28, 12, 0, 0, tzinfo=timezone.utc)
@@ -131,6 +179,35 @@ class LiveXSourceTests(unittest.TestCase):
 
         self.assertEqual(len(merged), 25)
         self.assertGreaterEqual(x_count, 5)
+
+    def test_merge_and_dedupe_news_items_enforces_min_x_slots_when_available(self):
+        rss_items = []
+        for i in range(30):
+            rss_items.append({
+                "id": f"rss-{i}",
+                "title": f"RSS Iran update {i}",
+                "time": f"2026-02-28T16:{59-i:02d}:00Z",
+                "url": f"https://example.com/rss/{i}",
+                "source": "Reuters",
+                "tag": "breaking",
+            })
+        x_items = []
+        for i in range(15):
+            x_items.append({
+                "id": f"x-{i}",
+                "title": f"IRGC update Hormuz {i}",
+                "time": f"2026-02-28T15:{59-i:02d}:00Z",
+                "url": f"https://x.com/a/status/{i}",
+                "source": "@auroraintel",
+                "type": "osint",
+                "tag": "osint",
+            })
+
+        merged = live.merge_and_dedupe_news_items(rss_items, x_items, limit=25, min_x_slots=10)
+        x_count = sum(1 for item in merged if str(item.get("source", "")).startswith("@"))
+
+        self.assertEqual(len(merged), 25)
+        self.assertGreaterEqual(x_count, 10)
 
     def test_fetch_news_feeds_includes_x_items_sorted_by_recency(self):
         rss_items = [
