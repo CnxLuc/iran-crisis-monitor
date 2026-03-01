@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import re
 import hashlib
 import random
+import html
 from http.server import BaseHTTPRequestHandler
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -200,6 +201,17 @@ def normalize_date(date_str):
 # ---------------------------------------------------------------------------
 # RSS parsing — handles both standard RSS (<item>) and Atom (<entry>)
 # ---------------------------------------------------------------------------
+def decode_html_entities(text, passes=2):
+    """Decode HTML entities, including doubly encoded forms like '&amp;#039;'."""
+    cleaned = (text or "").strip()
+    for _ in range(max(1, passes)):
+        decoded = html.unescape(cleaned)
+        if decoded == cleaned:
+            break
+        cleaned = decoded
+    return cleaned
+
+
 def parse_rss(xml_text, source_name, tag_type="breaking", max_items=10):
     items = []
     if not xml_text:
@@ -250,6 +262,8 @@ def parse_rss(xml_text, source_name, tag_type="breaking", max_items=10):
                 if p is not None and p.text:
                     pub_date = p.text.strip()
 
+            title = decode_html_entities(title)
+            desc = decode_html_entities(desc)
             text_check = (title + " " + desc).lower()
             if title and any(kw in text_check for kw in IRAN_KEYWORDS):
                 iso_time = normalize_date(pub_date) or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

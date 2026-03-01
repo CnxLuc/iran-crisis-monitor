@@ -114,6 +114,25 @@ class LiveXSourceTests(unittest.TestCase):
         self.assertTrue(item["time"].endswith("Z"))
         self.assertNotIn("https://", item["title"])
 
+    def test_parse_rss_decodes_double_encoded_html_entities(self):
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Iran&amp;#039;s escalation prompts response</title>
+      <description>US Central Command said five others were &amp;#039;seriously wounded&amp;#039;.</description>
+      <link>https://example.com/story</link>
+      <pubDate>Sat, 28 Feb 2026 10:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
+"""
+        items = live.parse_rss(xml, "Reuters", "breaking", max_items=5)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["title"], "Iran's escalation prompts response")
+        self.assertIn("'seriously wounded'", items[0]["excerpt"])
+        self.assertNotIn("&#039;", items[0]["title"] + items[0]["excerpt"])
+
     def test_merge_and_dedupe_news_items_collapses_duplicate_headlines_keep_newest(self):
         rss_items = [
             {
