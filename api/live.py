@@ -120,6 +120,17 @@ LOW_SIGNAL_KEYWORDS = [
     "mother", "child", "girl killed", "boy killed", "civilian story", "human story",
 ]
 
+MAJOR_IMPACT_PATTERNS = [
+    r"\b(us|u\.s\.)\s+(service ?members?|troops?|soldiers?|forces?)\b.*\b(killed|dead|fatalit(?:y|ies)|wounded|casualt(?:y|ies))\b",
+    r"\b(killed|dead|fatalit(?:y|ies)|wounded|casualt(?:y|ies))\b.*\b(us|u\.s\.)\s+(service ?members?|troops?|soldiers?|forces?)\b",
+    r"\b(strike|strikes|airstrike|airstrikes|missile|missiles|drone|drones|rocket|rockets|bombing)\b.*\b(iran|tehran|irgc|israel|hezbollah|houthi|hormuz|us|u\.s\.)\b",
+    r"\b(iran|tehran|irgc|israel|hezbollah|houthi|hormuz|us|u\.s\.)\b.*\b(strike|strikes|airstrike|airstrikes|missile|missiles|drone|drones|rocket|rockets|bombing)\b",
+    r"\b(iaea|nuclear|enrichment|centrifuge|fordow|natanz|isfahan|parchin)\b.*\b(accelerat\w*|breakout|90%|weapon\w*|denied|blocked|suspend\w*)\b",
+    r"\b(sanction|sanctions|snapback|embargo)\b.*\b(iran|irgc|nuclear|missile)\b",
+    r"\b(hormuz|strait of hormuz)\b.*\b(closure|closed|blockade|shipping|tanker|disrupt)\b",
+    r"\b(carrier strike group|csg|mobilization|mobilisation|deployment|deployed|evacuation|ultimatum)\b.*\b(iran|israel|us|u\.s\.|gulf|hormuz)\b",
+]
+
 
 def load_x_accounts_from_markdown(path=X_ACCOUNTS_FILE):
     """Load additional x.com handles from a markdown source list."""
@@ -350,6 +361,13 @@ def _count_keyword_hits(text, keywords):
     return sum(1 for kw in keywords if kw in lowered)
 
 
+def _count_pattern_hits(text, patterns):
+    lowered = (text or "").lower()
+    if not lowered:
+        return 0
+    return sum(1 for pattern in patterns if re.search(pattern, lowered))
+
+
 def is_x_news_item(item):
     source = str(item.get("source", "")).strip()
     url = str(item.get("url", "")).strip().lower()
@@ -372,53 +390,21 @@ def is_low_signal_story(item):
     return low_hits > 0 and critical_hits == 0 and high_hits < 2
 
 
-def source_priority_score(source):
-    source_lower = str(source or "").strip().lower()
-    if source_lower.startswith("@"):
-        return SOURCE_PRIORITY_WEIGHTS.get("@", 0)
-    return SOURCE_PRIORITY_WEIGHTS.get(source_lower, 0)
-
-
-def score_news_item_for_monitoring(item, now=None):
-    """
-    Analyst relevance score: source quality + tripwires + freshness.
-    """
-    score = 0.0
-    now_utc = now or datetime.now(timezone.utc)
+def is_major_impact_story(item):
     title = str(item.get("title", "")).strip()
     excerpt = str(item.get("excerpt", "")).strip()
-    combined = f"{title} {excerpt}"
-    tag = str(item.get("tag", "")).lower()
-
-    score += source_priority_score(item.get("source"))
-    if is_x_news_item(item):
-        score += 16
-
-    if tag == "osint":
-        score += 10
-    elif tag == "analysis":
-        score += 6
-    elif tag == "breaking":
-        score += 5
-
-    keyword_hits = _count_keyword_hits(combined, ANALYST_TRIPWIRE_KEYWORDS)
-    score += min(keyword_hits * 3, 24)
-
-    published_at = _parse_item_time(item, now=now_utc)
-    age_hours = (now_utc - published_at).total_seconds() / 3600
-    if age_hours <= 2:
-        score += 12
-    elif age_hours <= 6:
-        score += 8
-    elif age_hours <= 12:
-        score += 5
-    elif age_hours <= 24:
-        score += 2
-
+    combined = f"{title} {excerpt}".strip()
+    if not combined:
+        return False
     if is_low_signal_story(item):
-        score -= 35
+        return False
+    return _count_pattern_hits(combined, MAJOR_IMPACT_PATTERNS) > 0
 
-    return round(score, 2)
+
+def filter_major_impact_items(items):
+    if not items:
+        return []
+    return [item for item in items if is_major_impact_story(item)]
 
 
 # ---------------------------------------------------------------------------
@@ -533,10 +519,7 @@ def fetch_rss_news_feeds():
     if not all_items:
         return []
 
-    filtered = [item for item in all_items if not is_low_signal_story(item)]
-    pool = filtered if filtered else all_items
-    unique = merge_and_dedupe_news_items(pool, [], limit=25, min_x_slots=0)
-    return unique
+    return merge_and_dedupe_news_items(all_items, [], limit=25)
 
 
 # ---------------------------------------------------------------------------
@@ -867,13 +850,7 @@ def _news_dedupe_key(item):
     return fallback[:80]
 
 
-def _news_rank_sort_key(item, now=None):
-    published_at = _parse_item_time(item, now=now)
-    score = score_news_item_for_monitoring(item, now=now)
-    return score, published_at.timestamp()
-
-
-def merge_and_dedupe_news_items(rss_items, x_items, limit=25, min_x_slots=X_RESERVED_NEWS_SLOTS):
+def merge_and_dedupe_news_items(rss_items, x_items, limit=25):
     combined = (rss_items or []) + (x_items or [])
     if limit <= 0:
         return []
@@ -888,42 +865,18 @@ def merge_and_dedupe_news_items(rss_items, x_items, limit=25, min_x_slots=X_RESE
         if current is None:
             best_by_key[key] = item
             continue
-        if _news_rank_sort_key(item, now=now_utc) > _news_rank_sort_key(current, now=now_utc):
+        if _parse_item_time(item, now=now_utc) > _parse_item_time(current, now=now_utc):
             best_by_key[key] = item
     unique = list(best_by_key.values())
-
-    x_unique = [
-        item for item in unique
-        if is_x_news_item(item)
-    ]
-    non_x_unique = [item for item in unique if item not in x_unique]
-
-    x_sorted = sorted(x_unique, key=lambda item: _news_rank_sort_key(item, now=now_utc), reverse=True)
-    non_x_sorted = sorted(non_x_unique, key=lambda item: _news_rank_sort_key(item, now=now_utc), reverse=True)
-
-    reserved_x = min(max(0, int(min_x_slots or 0)), len(x_sorted), limit)
-    selected = x_sorted[:reserved_x]
-    if len(selected) < limit:
-        selected.extend(non_x_sorted[:max(0, limit - len(selected))])
-
-    selected_ids = {id(item) for item in selected}
-    if len(selected) < limit:
-        for item in sorted(unique, key=lambda one: _news_rank_sort_key(one, now=now_utc), reverse=True):
-            if id(item) in selected_ids:
-                continue
-            selected.append(item)
-            selected_ids.add(id(item))
-            if len(selected) >= limit:
-                break
-
-    selected.sort(key=lambda item: _news_rank_sort_key(item, now=now_utc), reverse=True)
-    return selected[:limit]
+    unique.sort(key=lambda item: _parse_item_time(item, now=now_utc), reverse=True)
+    return unique[:limit]
 
 
 def fetch_news_feeds(return_debug=False):
     rss_items = fetch_rss_news_feeds()
     x_items, x_debug = fetch_x_source_items(return_debug=True)
-    merged = merge_and_dedupe_news_items(rss_items, x_items, limit=25)
+    filtered = filter_major_impact_items((rss_items or []) + (x_items or []))
+    merged = merge_and_dedupe_news_items(filtered, [], limit=25)
 
     if return_debug:
         return merged, {
