@@ -3846,8 +3846,7 @@ function renderNews(news) {
     feed.innerHTML = '<div class="loading-state"><div class="text-xs text-muted font-mono">NO ITEMS IN FEED</div></div>';
     return;
   }
-  const sorted = [...news].sort((a, b) => new Date(b.time) - new Date(a.time));
-  feed.innerHTML = sorted.map((item, i) => {
+  feed.innerHTML = news.map((item, i) => {
     const isOsint = item.type === 'osint' || item.source === 'OSINT';
     const isBreaking = item.tag === 'breaking';
     const badgeClass = sourceBadgeClass(item.source);

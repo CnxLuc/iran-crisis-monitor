@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 import re
 import hashlib
 import random
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -48,7 +49,8 @@ IRAN_KEYWORDS = [
 # X API source configuration
 # ---------------------------------------------------------------------------
 X_BEARER_TOKEN_ENV = "X_BEARER_TOKEN"
-X_ALLOWED_ACCOUNTS = [
+X_ACCOUNTS_FILE = "OSINT-ACCOUNTS.md"
+BASE_X_ALLOWED_ACCOUNTS = [
     "auroraintel",
     "sentdefender",
     "intelcrab",
@@ -80,11 +82,74 @@ X_MAX_AGE_HOURS = 12
 X_MIN_TEXT_LENGTH = 40
 X_MIN_ENGAGEMENT = 12
 X_MIN_SCORE = 22
-X_RESERVED_NEWS_SLOTS = 5
+X_RESERVED_NEWS_SLOTS = 10
 ANTHROPIC_API_KEY_ENV = "ANTHROPIC_API_KEY"
 ANTHROPIC_MODEL_ENV = "ANTHROPIC_MODEL"
 ANTHROPIC_DEFAULT_MODEL = "claude-3-5-haiku-latest"
 ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
+
+SOURCE_PRIORITY_WEIGHTS = {
+    "iran intl": 20,
+    "iran international": 20,
+    "@": 35,
+    "reuters": 16,
+    "bellingcat": 15,
+    "breaking defense": 14,
+    "war on the rocks": 13,
+    "times of israel": 11,
+    "jerusalem post": 10,
+    "middle east eye": 9,
+    "google news": 5,
+    "al jazeera": 4,
+}
+
+ANALYST_TRIPWIRE_KEYWORDS = [
+    "hormuz", "strait", "irgc", "qods", "quds", "proxy", "hezbollah", "houthi",
+    "iaea", "enrichment", "fordow", "natanz", "isfahan", "parchin", "centrifuge",
+    "carrier", "strike", "air defense", "missile", "drone", "uav", "retaliation",
+    "evacuation", "mobilization", "ultimatum", "ceasefire", "backchannel", "sanction",
+    "shipping", "tanker", "oil", "energy", "c2", "command", "control", "deployment",
+]
+ANALYST_CRITICAL_KEYWORDS = [
+    "hormuz", "iaea", "enrichment", "fordow", "natanz", "isfahan", "parchin",
+    "quds", "qods", "proxy", "carrier", "deployment", "evacuation", "ultimatum",
+]
+
+LOW_SIGNAL_KEYWORDS = [
+    "accuses", "war crimes", "holds remains", "funeral", "mourning", "grief", "father",
+    "mother", "child", "girl killed", "boy killed", "civilian story", "human story",
+]
+
+
+def load_x_accounts_from_markdown(path=X_ACCOUNTS_FILE):
+    """Load additional x.com handles from a markdown source list."""
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except Exception:
+        return []
+
+    handles = []
+    for handle in re.findall(r"\[@([A-Za-z0-9_]+)\]\(https?://x\.com/", text, flags=re.IGNORECASE):
+        normalized = handle.strip().lower()
+        if normalized:
+            handles.append(normalized)
+    return handles
+
+
+def build_x_allowed_accounts():
+    merged = BASE_X_ALLOWED_ACCOUNTS + load_x_accounts_from_markdown()
+    deduped = []
+    seen = set()
+    for account in merged:
+        normalized = str(account).strip().lower().lstrip("@")
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(normalized)
+    return deduped
+
+
+X_ALLOWED_ACCOUNTS = build_x_allowed_accounts()
 
 IRRELEVANT_MARKET_TITLE_PATTERNS = [
     r"\.\.\.\?",          # unresolved placeholder titles, e.g. "US next strikes Iran on...?"
@@ -258,6 +323,95 @@ def normalize_date(date_str):
 
 
 # ---------------------------------------------------------------------------
+# News relevance ranking
+# ---------------------------------------------------------------------------
+def _parse_item_time(item, now=None):
+    raw_time = str(item.get("time") or item.get("timestamp") or "").strip()
+    if not raw_time:
+        return now or datetime.now(timezone.utc)
+    normalized = normalize_date(raw_time)
+    if not normalized:
+        return now or datetime.now(timezone.utc)
+    return datetime.strptime(normalized, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+
+
+def _count_keyword_hits(text, keywords):
+    lowered = (text or "").lower()
+    return sum(1 for kw in keywords if kw in lowered)
+
+
+def is_x_news_item(item):
+    source = str(item.get("source", "")).strip()
+    url = str(item.get("url", "")).strip().lower()
+    return source.startswith("@") or url.startswith("https://x.com/")
+
+
+def is_low_signal_story(item):
+    """
+    Filter out human-interest/emotive stories unless they carry strategic content.
+    """
+    title = str(item.get("title", "")).strip()
+    excerpt = str(item.get("excerpt", "")).strip()
+    combined = f"{title} {excerpt}".lower()
+    if not combined:
+        return True
+
+    low_hits = _count_keyword_hits(combined, LOW_SIGNAL_KEYWORDS)
+    high_hits = _count_keyword_hits(combined, ANALYST_TRIPWIRE_KEYWORDS)
+    critical_hits = _count_keyword_hits(combined, ANALYST_CRITICAL_KEYWORDS)
+    return low_hits > 0 and critical_hits == 0 and high_hits < 2
+
+
+def source_priority_score(source):
+    source_lower = str(source or "").strip().lower()
+    if source_lower.startswith("@"):
+        return SOURCE_PRIORITY_WEIGHTS.get("@", 0)
+    return SOURCE_PRIORITY_WEIGHTS.get(source_lower, 0)
+
+
+def score_news_item_for_monitoring(item, now=None):
+    """
+    Analyst relevance score: source quality + tripwires + freshness.
+    """
+    score = 0.0
+    now_utc = now or datetime.now(timezone.utc)
+    title = str(item.get("title", "")).strip()
+    excerpt = str(item.get("excerpt", "")).strip()
+    combined = f"{title} {excerpt}"
+    tag = str(item.get("tag", "")).lower()
+
+    score += source_priority_score(item.get("source"))
+    if is_x_news_item(item):
+        score += 16
+
+    if tag == "osint":
+        score += 10
+    elif tag == "analysis":
+        score += 6
+    elif tag == "breaking":
+        score += 5
+
+    keyword_hits = _count_keyword_hits(combined, ANALYST_TRIPWIRE_KEYWORDS)
+    score += min(keyword_hits * 3, 24)
+
+    published_at = _parse_item_time(item, now=now_utc)
+    age_hours = (now_utc - published_at).total_seconds() / 3600
+    if age_hours <= 2:
+        score += 12
+    elif age_hours <= 6:
+        score += 8
+    elif age_hours <= 12:
+        score += 5
+    elif age_hours <= 24:
+        score += 2
+
+    if is_low_signal_story(item):
+        score -= 35
+
+    return round(score, 2)
+
+
+# ---------------------------------------------------------------------------
 # RSS parsing - handles both standard RSS (<item>) and Atom (<entry>)
 # ---------------------------------------------------------------------------
 def parse_rss(xml_text, source_name, tag_type="breaking", max_items=10):
@@ -369,7 +523,9 @@ def fetch_rss_news_feeds():
     if not all_items:
         return []
 
-    unique = merge_and_dedupe_news_items(all_items, [], limit=25)
+    filtered = [item for item in all_items if not is_low_signal_story(item)]
+    pool = filtered if filtered else all_items
+    unique = merge_and_dedupe_news_items(pool, [], limit=25, min_x_slots=0)
     return unique
 
 
@@ -701,33 +857,48 @@ def _news_dedupe_key(item):
     return fallback[:80]
 
 
-def merge_and_dedupe_news_items(rss_items, x_items, limit=25):
+def _news_rank_sort_key(item, now=None):
+    published_at = _parse_item_time(item, now=now)
+    score = score_news_item_for_monitoring(item, now=now)
+    return score, published_at.timestamp()
+
+
+def merge_and_dedupe_news_items(rss_items, x_items, limit=25, min_x_slots=X_RESERVED_NEWS_SLOTS):
     combined = (rss_items or []) + (x_items or [])
-    unique = []
-    seen = set()
-
-    for item in combined:
-        key = _news_dedupe_key(item)
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append(item)
-
-    unique.sort(key=lambda item: item.get("time", "1970-01-01T00:00:00Z"), reverse=True)
     if limit <= 0:
         return []
+    if not combined:
+        return []
+
+    now_utc = datetime.now(timezone.utc)
+    best_by_key = {}
+    for item in combined:
+        key = _news_dedupe_key(item)
+        current = best_by_key.get(key)
+        if current is None:
+            best_by_key[key] = item
+            continue
+        if _news_rank_sort_key(item, now=now_utc) > _news_rank_sort_key(current, now=now_utc):
+            best_by_key[key] = item
+    unique = list(best_by_key.values())
 
     x_unique = [
         item for item in unique
-        if str(item.get("source", "")).startswith("@") or str(item.get("url", "")).startswith("https://x.com/")
+        if is_x_news_item(item)
     ]
     non_x_unique = [item for item in unique if item not in x_unique]
 
-    reserved_x = min(X_RESERVED_NEWS_SLOTS, len(x_unique), limit)
-    selected = non_x_unique[:max(0, limit - reserved_x)] + x_unique[:reserved_x]
+    x_sorted = sorted(x_unique, key=lambda item: _news_rank_sort_key(item, now=now_utc), reverse=True)
+    non_x_sorted = sorted(non_x_unique, key=lambda item: _news_rank_sort_key(item, now=now_utc), reverse=True)
+
+    reserved_x = min(max(0, int(min_x_slots or 0)), len(x_sorted), limit)
+    selected = x_sorted[:reserved_x]
+    if len(selected) < limit:
+        selected.extend(non_x_sorted[:max(0, limit - len(selected))])
+
     selected_ids = {id(item) for item in selected}
     if len(selected) < limit:
-        for item in unique:
+        for item in sorted(unique, key=lambda one: _news_rank_sort_key(one, now=now_utc), reverse=True):
             if id(item) in selected_ids:
                 continue
             selected.append(item)
@@ -735,7 +906,7 @@ def merge_and_dedupe_news_items(rss_items, x_items, limit=25):
             if len(selected) >= limit:
                 break
 
-    selected.sort(key=lambda item: item.get("time", "1970-01-01T00:00:00Z"), reverse=True)
+    selected.sort(key=lambda item: _news_rank_sort_key(item, now=now_utc), reverse=True)
     return selected[:limit]
 
 

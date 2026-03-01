@@ -22,7 +22,7 @@ vercel.json   # Vercel routing config
 ## Data Sources
 
 - **News**: Iran International, Google News, Reuters, Al Jazeera, Middle East Eye, Bellingcat, Breaking Defense, War on the Rocks
-- **OSINT**: @AuroraIntel, @sentdefender, @IntelCrab, @Faytuks, @LOABORINGWAR
+- **OSINT**: loaded from [`OSINT-ACCOUNTS.md`](./OSINT-ACCOUNTS.md) (plus baseline handles for fail-safe startup)
 - **Markets**: Polymarket Gamma API (live odds) + CLOB API (price history)
 
 ## Deployment
