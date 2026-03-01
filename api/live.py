@@ -151,6 +151,16 @@ def build_x_allowed_accounts():
 
 X_ALLOWED_ACCOUNTS = build_x_allowed_accounts()
 
+MARKET_INDICATOR_SPECS = {
+    "wti": {"symbol": "CL=F", "valueKind": "usd2", "changeKind": "percent"},
+    "brent": {"symbol": "BZ=F", "valueKind": "usd2", "changeKind": "percent"},
+    "gold": {"symbol": "GC=F", "valueKind": "usd0", "changeKind": "percent"},
+    "btc": {"symbol": "BTC-USD", "valueKind": "usd0", "changeKind": "percent"},
+    "lmt": {"symbol": "LMT", "valueKind": "usd2", "changeKind": "percent"},
+    "vix": {"symbol": "^VIX", "valueKind": "number1", "changeKind": "points"},
+    "us10y": {"symbol": "^TNX", "valueKind": "yield_pct", "changeKind": "bps"},
+    "sp500": {"symbol": "^GSPC", "valueKind": "number0", "changeKind": "percent"},
+}
 IRRELEVANT_MARKET_TITLE_PATTERNS = [
     r"\.\.\.\?",          # unresolved placeholder titles, e.g. "US next strikes Iran on...?"
     r"…\?",               # same as above with unicode ellipsis
@@ -925,6 +935,206 @@ def fetch_news_feeds(return_debug=False):
 
 
 # ---------------------------------------------------------------------------
+# Market indicators (Yahoo Finance)
+# ---------------------------------------------------------------------------
+def _to_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def fetch_yahoo_quotes(symbols, timeout=6):
+    if not symbols:
+        return {}
+    encoded_symbols = ",".join(symbols)
+    url = (
+        "https://query1.finance.yahoo.com/v7/finance/quote"
+        f"?symbols={urllib.parse.quote(encoded_symbols, safe=',')}"
+    )
+    raw = fetch_url(url, timeout=timeout)
+    out = {}
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            result = parsed.get("quoteResponse", {}).get("result", [])
+            for item in result:
+                symbol = item.get("symbol")
+                if symbol:
+                    out[str(symbol)] = item
+        except Exception:
+            pass
+
+    missing_symbols = [s for s in symbols if s not in out]
+    if not missing_symbols:
+        return out
+
+    with ThreadPoolExecutor(max_workers=min(8, len(missing_symbols))) as pool:
+        futures = {
+            pool.submit(fetch_yahoo_chart_quote, symbol, timeout): symbol
+            for symbol in missing_symbols
+        }
+        for future in as_completed(futures):
+            try:
+                quote = future.result()
+                if quote and quote.get("symbol"):
+                    out[str(quote["symbol"])] = quote
+            except Exception:
+                pass
+    return out
+
+
+def fetch_yahoo_chart_quote(symbol, timeout=6):
+    encoded_symbol = urllib.parse.quote(symbol, safe="")
+    url = (
+        f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_symbol}"
+        "?interval=1d&range=2d"
+    )
+    raw = fetch_url(url, timeout=timeout)
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+        result = parsed.get("chart", {}).get("result", [])
+        if not result:
+            return None
+        first = result[0]
+        meta = first.get("meta", {})
+        indicators = first.get("indicators", {}).get("quote", [])
+        closes = indicators[0].get("close", []) if indicators else []
+
+        valid_closes = [float(c) for c in closes if c is not None]
+        latest_close = valid_closes[-1] if valid_closes else None
+        if len(valid_closes) >= 2:
+            prev_close = valid_closes[-2]
+        else:
+            prev_close = (
+                _to_float(meta.get("regularMarketPreviousClose"))
+                or _to_float(meta.get("chartPreviousClose"))
+                or _to_float(meta.get("previousClose"))
+            )
+        market_price = _to_float(meta.get("regularMarketPrice"))
+        if market_price is None:
+            market_price = latest_close
+        if market_price is None:
+            return None
+
+        change = None
+        change_pct = None
+        if prev_close not in (None, 0):
+            change = market_price - prev_close
+            change_pct = (change / prev_close) * 100.0
+
+        return {
+            "symbol": symbol,
+            "regularMarketPrice": market_price,
+            "regularMarketChange": change,
+            "regularMarketChangePercent": change_pct,
+        }
+    except Exception:
+        return None
+
+
+def format_market_value(indicator_key, value):
+    if indicator_key in ("wti", "brent", "lmt"):
+        return f"${value:,.2f}"
+    if indicator_key in ("gold", "btc"):
+        return f"${value:,.0f}"
+    if indicator_key == "vix":
+        return f"{value:,.1f}"
+    if indicator_key == "us10y":
+        return f"{value:.2f}%"
+    if indicator_key == "sp500":
+        return f"{value:,.0f}"
+    return f"{value}"
+
+
+def format_market_change(indicator_key, quote):
+    if indicator_key in ("wti", "brent", "gold", "btc", "lmt", "sp500"):
+        raw_change = _to_float(quote.get("regularMarketChangePercent"))
+        suffix = "%"
+        decimals = 1
+    elif indicator_key == "vix":
+        raw_change = _to_float(quote.get("regularMarketChange"))
+        suffix = " pts"
+        decimals = 1
+    elif indicator_key == "us10y":
+        base_change = _to_float(quote.get("regularMarketChange"))
+        us10y_price = _to_float(quote.get("regularMarketPrice"))
+        if base_change is None:
+            raw_change = None
+        elif us10y_price is not None and us10y_price > 20:
+            raw_change = base_change * 10.0
+        else:
+            raw_change = base_change * 100.0
+        suffix = " bps"
+        decimals = 0
+    else:
+        raw_change = None
+        suffix = ""
+        decimals = 1
+
+    if raw_change is None:
+        return None, "", "flat"
+
+    if raw_change > 0:
+        arrow = "▲"
+        direction = "up"
+        sign = "+"
+    elif raw_change < 0:
+        arrow = "▼"
+        direction = "down"
+        sign = "-"
+    else:
+        arrow = "•"
+        direction = "flat"
+        sign = ""
+
+    magnitude = abs(raw_change)
+    number = f"{magnitude:.{decimals}f}"
+    return raw_change, f"{arrow} {sign}{number}{suffix}", direction
+
+
+def build_market_snapshot(quotes, as_of=None):
+    as_of_value = as_of or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    indicators = {}
+
+    for indicator_key, spec in MARKET_INDICATOR_SPECS.items():
+        quote = quotes.get(spec["symbol"], {})
+        raw_price = _to_float(quote.get("regularMarketPrice"))
+        if raw_price is None:
+            continue
+
+        if indicator_key == "us10y":
+            value = raw_price / 10.0 if raw_price > 20 else raw_price
+        else:
+            value = raw_price
+        change_value, change_display, direction = format_market_change(indicator_key, quote)
+
+        indicators[indicator_key] = {
+            "symbol": spec["symbol"],
+            "value": round(value, 4),
+            "valueDisplay": format_market_value(indicator_key, value),
+            "change": None if change_value is None else round(change_value, 4),
+            "changeDisplay": change_display,
+            "direction": direction,
+            "changeKind": spec["changeKind"],
+        }
+
+    return {
+        "asOf": as_of_value,
+        "source": "yahoo_finance",
+        "indicators": indicators,
+    }
+
+
+def fetch_market_snapshot():
+    symbols = [cfg["symbol"] for cfg in MARKET_INDICATOR_SPECS.values()]
+    quotes = fetch_yahoo_quotes(symbols, timeout=6)
+    return build_market_snapshot(quotes)
+
+
+# ---------------------------------------------------------------------------
 # Polymarket - price history via CLOB API
 # ---------------------------------------------------------------------------
 def fetch_price_history(token_id, interval="max", fidelity=120):
@@ -1077,6 +1287,7 @@ class handler(BaseHTTPRequestHandler):
 
         # Fetch real price history for selected markets
         odds_history = build_odds_history(markets_out)
+        market_snapshot = fetch_market_snapshot()
 
         response = {
             "timestamp": now.isoformat(),
@@ -1084,12 +1295,14 @@ class handler(BaseHTTPRequestHandler):
             "news": news[:25],
             "markets": markets_out,
             "oddsHistory": odds_history,
+            "marketSnapshot": market_snapshot,
             "meta": {
                 "newsCount": len(news),
                 "rssCount": news_debug.get("rssCount", 0),
                 "mergedCount": news_debug.get("mergedCount", len(news)),
                 "xDebug": news_debug.get("x", {}),
                 "marketsCount": len(markets_out),
+                "marketIndicatorsCount": len(market_snapshot.get("indicators", {})),
                 "historyPoints": sum(
                     len(list(v.values())[0]) if v else 0
                     for v in odds_history.values()
